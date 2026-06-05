@@ -441,7 +441,7 @@ private final class VideoMessageCameraScreenComponent: CombinedComponent {
                         }
                     }, error: { [weak self] _ in
                         if let self, let controller = self.getController() {
-                            controller.completion(nil, nil, nil)
+                            controller.completion(nil, nil, nil, nil)
                         }
                     }))
                 }
@@ -536,7 +536,7 @@ private final class VideoMessageCameraScreenComponent: CombinedComponent {
             let availableSize = context.component.containerSize
             
             var sideInset: CGFloat = 8.0
-            if component.safeInsets.bottom <= 32.0 {
+            if component.safeInsets.bottom <= 32.0 && environment.inputHeight == 0.0 {
                 sideInset += 18.0
             }
             
@@ -575,14 +575,18 @@ private final class VideoMessageCameraScreenComponent: CombinedComponent {
             
             if !component.isPreviewing {
                 if case .on = component.cameraState.flashMode, case .front = component.cameraState.position {
+                    let frontFlashPosition = CGPoint(x: component.previewFrame.midX, y: component.previewFrame.midY)
+                    let frontFlashSize = CGSize(
+                        width: max(abs(frontFlashPosition.x), abs(context.availableSize.width - frontFlashPosition.x)) * 2.0,
+                        height: max(abs(frontFlashPosition.y), abs(context.availableSize.height - frontFlashPosition.y)) * 2.0
+                    )
                     let frontFlash = frontFlash.update(
-                        component: Image(image: state.image(.flashImage, theme: environment.theme), tintColor: component.cameraState.flashTint.color),
-                        availableSize: context.availableSize,
+                        component: Image(image: state.image(.flashImage, theme: environment.theme), tintColor: component.cameraState.flashTint.color, contentMode: .scaleAspectFill),
+                        availableSize: frontFlashSize,
                         transition: .easeInOut(duration: 0.2)
                     )
-                    let frontFlashFrame = CGRect(origin: CGPoint(), size: context.availableSize)
                     context.add(frontFlash
-                        .position(frontFlashFrame.center)
+                        .position(frontFlashPosition)
                         .scale(1.5 - component.cameraState.flashTintSize * 0.5)
                         .appear(.default(alpha: true))
                         .disappear(ComponentTransition.Disappear({ view, transition, completion in
@@ -599,7 +603,7 @@ private final class VideoMessageCameraScreenComponent: CombinedComponent {
                         size: CGSize(width: 40.0, height: 40.0),
                         cornerRadius: 40.0 * 0.5,
                         isDark: environment.theme.overallDarkAppearance,
-                        tintColor: .init(kind: .panel, color: environment.theme.chat.inputPanel.inputBackgroundColor.withMultipliedAlpha(0.7))
+                        tintColor: .init(kind: .panel)
                     ),
                     availableSize: CGSize(width: 40.0, height: 40.0),
                     transition: .immediate
@@ -702,7 +706,7 @@ private final class VideoMessageCameraScreenComponent: CombinedComponent {
                             size: CGSize(width: 40.0, height: 40.0),
                             cornerRadius: 40.0 * 0.5,
                             isDark: environment.theme.overallDarkAppearance,
-                            tintColor: .init(kind: .panel, color: environment.theme.chat.inputPanel.inputBackgroundColor.withMultipliedAlpha(0.7))
+                            tintColor: .init(kind: .panel)
                         ),
                         availableSize: CGSize(width: 40.0, height: 40.0),
                         transition: .immediate
@@ -734,7 +738,7 @@ private final class VideoMessageCameraScreenComponent: CombinedComponent {
                                             size: CGSize(width: 40.0, height: 40.0),
                                             cornerRadius: 40.0 * 0.5,
                                             isDark: environment.theme.overallDarkAppearance,
-                                            tintColor: .init(kind: .panel, color: environment.theme.chat.inputPanel.inputBackgroundColor.withMultipliedAlpha(0.7))
+                                            tintColor: .init(kind: .panel)
                                         )
                                     )
                                 ),
@@ -779,7 +783,7 @@ private final class VideoMessageCameraScreenComponent: CombinedComponent {
                                         size: CGSize(width: 40.0, height: 40.0),
                                         cornerRadius: 40.0 * 0.5,
                                         isDark: environment.theme.overallDarkAppearance,
-                                        tintColor: .init(kind: .panel, color: environment.theme.chat.inputPanel.inputBackgroundColor.withMultipliedAlpha(0.7))
+                                        tintColor: .init(kind: .panel)
                                     ))
                                 ),
                                 AnyComponentWithIdentity(
@@ -1641,7 +1645,7 @@ public class VideoMessageCameraScreen: ViewController {
     fileprivate var allowLiveUpload: Bool
     fileprivate var viewOnceAvailable: Bool
     
-    fileprivate let completion: (EnqueueMessage?, Bool?, Int32?) -> Void
+    fileprivate let completion: (EnqueueMessage?, Bool?, Int32?, Int32?) -> Void
     
     private var audioSessionDisposable: Disposable?
     
@@ -1794,7 +1798,7 @@ public class VideoMessageCameraScreen: ViewController {
         viewOnceAvailable: Bool,
         inputPanelFrame: (CGRect, Bool),
         chatNode: ASDisplayNode?,
-        completion: @escaping (EnqueueMessage?, Bool?, Int32?) -> Void
+        completion: @escaping (EnqueueMessage?, Bool?, Int32?, Int32?) -> Void
     ) {
         self.context = context
         self.updatedPresentationData = updatedPresentationData
@@ -1833,7 +1837,7 @@ public class VideoMessageCameraScreen: ViewController {
     fileprivate var didSend = false
     fileprivate var lastActionTimestamp: Double?
     fileprivate var isSendingImmediately = false
-    public func sendVideoRecording(silentPosting: Bool? = nil, scheduleTime: Int32? = nil, messageEffect: ChatSendMessageEffect? = nil) {
+    public func sendVideoRecording(silentPosting: Bool? = nil, scheduleTime: Int32? = nil, repeatPeriod: Int32? = nil, messageEffect: ChatSendMessageEffect? = nil) {
         guard !self.didSend else {
             return
         }
@@ -1845,7 +1849,7 @@ public class VideoMessageCameraScreen: ViewController {
         }
         
         if case .none = self.cameraState.recording, self.node.results.isEmpty {
-            self.completion(nil, nil, nil)
+            self.completion(nil, nil, nil, nil)
             return
         }
         
@@ -1859,7 +1863,7 @@ public class VideoMessageCameraScreen: ViewController {
                 self.waitingForNextResult = true
                 self.node.stopRecording.invoke(Void())
             } else {
-                self.completion(nil, nil, nil)
+                self.completion(nil, nil, nil, nil)
                 return
             }
         }
@@ -1889,7 +1893,7 @@ public class VideoMessageCameraScreen: ViewController {
             }
             
             if duration < 1.0 {
-                self.completion(nil, nil, nil)
+                self.completion(nil, nil, nil, nil)
                 return
             }
             
@@ -1937,7 +1941,7 @@ public class VideoMessageCameraScreen: ViewController {
                 guard let self else {
                     return
                 }
-                let values = MediaEditorValues(peerId: self.context.account.peerId, originalDimensions: dimensions, cropOffset: .zero, cropRect: CGRect(origin: .zero, size: dimensions.cgSize), cropScale: 1.0, cropRotation: 0.0, cropMirroring: false, cropOrientation: nil, gradientColors: nil, videoTrimRange: self.node.previewState?.trimRange, videoIsMuted: false, videoIsFullHd: false, videoIsMirrored: false, videoVolume: nil, additionalVideoPath: nil, additionalVideoIsDual: false, additionalVideoPosition: nil, additionalVideoScale: nil, additionalVideoRotation: nil, additionalVideoPositionChanges: [], additionalVideoTrimRange: nil, additionalVideoOffset: nil, additionalVideoVolume: nil, collage: [], nightTheme: false, drawing: nil, maskDrawing: nil, entities: [], toolValues: [:], audioTrack: nil, audioTrackTrimRange: nil, audioTrackOffset: nil, audioTrackVolume: nil, audioTrackSamples: nil, collageTrackSamples: nil, coverImageTimestamp: nil, coverDimensions: nil, qualityPreset: .videoMessage)
+                let values = MediaEditorValues(peerId: self.context.account.peerId, originalDimensions: dimensions, cropOffset: .zero, cropRect: CGRect(origin: .zero, size: dimensions.cgSize), cropScale: 1.0, cropRotation: 0.0, cropMirroring: false, cropOrientation: nil, gradientColors: nil, videoTrimRange: self.node.previewState?.trimRange, videoBounce: false, videoIsMuted: false, videoIsFullHd: false, videoIsMirrored: false, videoVolume: nil, additionalVideoPath: nil, additionalVideoIsDual: false, additionalVideoPosition: nil, additionalVideoScale: nil, additionalVideoRotation: nil, additionalVideoPositionChanges: [], additionalVideoTrimRange: nil, additionalVideoOffset: nil, additionalVideoVolume: nil, collage: [], nightTheme: false, drawing: nil, maskDrawing: nil, entities: [], toolValues: [:], audioTrack: nil, audioTrackTrimRange: nil, audioTrackOffset: nil, audioTrackVolume: nil, audioTrackSamples: nil, collageTrackSamples: nil, coverImageTimestamp: nil, coverDimensions: nil, qualityPreset: .videoMessage)
                 
                 var resourceAdjustments: VideoMediaResourceAdjustments? = nil
                 if let valuesData = try? JSONEncoder().encode(values) {
@@ -1955,7 +1959,7 @@ public class VideoMessageCameraScreen: ViewController {
                 }
                 if !hasAdjustments, let liveUploadData, let data = try? Data(contentsOf: URL(fileURLWithPath: video.videoPath)) {
                     resource = LocalFileMediaResource(fileId: liveUploadData.id)
-                    self.context.account.postbox.mediaBox.storeResourceData(resource.id, data: data, synchronous: true)
+                    self.context.engine.resources.storeResourceData(id: EngineMediaResource.Id(resource.id), data: data, synchronous: true)
                 } else {
                     resource = LocalFileVideoMediaResource(randomId: Int64.random(in: Int64.min ... Int64.max), paths: videoPaths, adjustments: resourceAdjustments)
                 }
@@ -1965,7 +1969,7 @@ public class VideoMessageCameraScreen: ViewController {
                 let thumbnailResource = LocalFileMediaResource(fileId: Int64.random(in: Int64.min ... Int64.max))
                 let thumbnailSize = video.dimensions.cgSize.aspectFitted(CGSize(width: 320.0, height: 320.0))
                 if let thumbnailData = scaleImageToPixelSize(image: thumbnailImage, size: thumbnailSize)?.jpegData(compressionQuality: 0.4) {
-                    self.context.account.postbox.mediaBox.storeResourceData(thumbnailResource.id, data: thumbnailData)
+                    self.context.engine.resources.storeResourceData(id: EngineMediaResource.Id(thumbnailResource.id), data: thumbnailData)
                     previewRepresentations.append(TelegramMediaImageRepresentation(dimensions: PixelDimensions(thumbnailSize), resource: thumbnailResource, progressiveSizes: [], immediateThumbnailData: nil, hasVideo: false, isPersonal: false))
                 }
                 
@@ -1998,7 +2002,7 @@ public class VideoMessageCameraScreen: ViewController {
                     localGroupingKey: nil,
                     correlationId: nil,
                     bubbleUpEmojiOrStickersets: []
-                ), silentPosting, scheduleTime)
+                ), silentPosting, scheduleTime, repeatPeriod)
             })
         })
     }

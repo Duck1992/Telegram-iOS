@@ -10,7 +10,7 @@ import MergeLists
 import ItemListUI
 import PresentationDataUtils
 import AccountContext
-import ShareController
+
 import SearchBarNode
 import SearchUI
 import UndoUI
@@ -95,7 +95,7 @@ private enum LanguageListEntry: Comparable, Identifiable {
             case let .translate(text, value):
                 return ItemListSwitchItem(presentationData: ItemListPresentationData(presentationData), systemStyle: .glass, title: text, value: value, sectionId: LanguageListSection.translate.rawValue, style: .blocks, updated: { value in
                     toggleShowTranslate(value)
-                })
+                }, tag: LocalizationListEntryTag.showButton)
             case let .translateEntire(text, value, locked):
                 return ItemListSwitchItem(presentationData: ItemListPresentationData(presentationData), systemStyle: .glass, title: text, value: value, enableInteractiveChanges: !locked, displayLocked: locked, sectionId: LanguageListSection.translate.rawValue, style: .blocks, updated: { value in
                     if !locked {
@@ -103,7 +103,7 @@ private enum LanguageListEntry: Comparable, Identifiable {
                     }
                 }, activatedWhileDisabled: {
                     showPremiumInfo()
-                })
+                }, tag: LocalizationListEntryTag.translateChats)
             case let .doNotTranslate(text, value):
                 return ItemListDisclosureItem(presentationData: ItemListPresentationData(presentationData), systemStyle: .glass, title: text, label: value, sectionId: LanguageListSection.translate.rawValue, style: .blocks, action: {
                     openDoNotTranslate()
@@ -167,7 +167,7 @@ private final class LocalizationListSearchContainerNode: SearchDisplayController
         self.dimNode = ASDisplayNode()
         self.dimNode.backgroundColor = .clear
         
-        self.listNode = ListView()
+        self.listNode = ListViewImpl()
         self.listNode.accessibilityPageScrolledString = { row, count in
             return presentationData.strings.VoiceOver_ScrollStatus(row, count).string
         }
@@ -342,6 +342,7 @@ final class LocalizationListControllerNode: ViewControllerTracingNode {
     private let requestDeactivateSearch: () -> Void
     private let present: (ViewController, Any?) -> Void
     private let push: (ViewController) -> Void
+    private var focusOnItemTag: LocalizationListEntryTag?
     
     private var didSetReady = false
     let _ready = ValuePromise<Bool>()
@@ -367,7 +368,7 @@ final class LocalizationListControllerNode: ViewControllerTracingNode {
         }
     }
     
-    init(context: AccountContext, presentationData: PresentationData, navigationBar: NavigationBar, requestActivateSearch: @escaping () -> Void, requestDeactivateSearch: @escaping () -> Void, updateCanStartEditing: @escaping (Bool?) -> Void, present: @escaping (ViewController, Any?) -> Void, push: @escaping (ViewController) -> Void) {
+    init(context: AccountContext, presentationData: PresentationData, navigationBar: NavigationBar, requestActivateSearch: @escaping () -> Void, requestDeactivateSearch: @escaping () -> Void, updateCanStartEditing: @escaping (Bool?) -> Void, present: @escaping (ViewController, Any?) -> Void, push: @escaping (ViewController) -> Void, focusOnItemTag: LocalizationListEntryTag?) {
         self.context = context
         self.presentationData = presentationData
         self.presentationDataValue.set(.single(presentationData))
@@ -376,8 +377,9 @@ final class LocalizationListControllerNode: ViewControllerTracingNode {
         self.requestDeactivateSearch = requestDeactivateSearch
         self.present = present
         self.push = push
+        self.focusOnItemTag = focusOnItemTag
 
-        self.listNode = ListView()
+        self.listNode = ListViewImpl()
         self.listNode.keepTopItemOverscrollBackground = ListViewKeepTopItemOverscrollBackground(color: presentationData.theme.list.blocksBackgroundColor, direction: true)
         self.listNode.accessibilityPageScrolledString = { row, count in
             return presentationData.strings.VoiceOver_ScrollStatus(row, count).string
@@ -741,6 +743,16 @@ final class LocalizationListControllerNode: ViewControllerTracingNode {
                     if !strongSelf.didSetReady {
                         strongSelf.didSetReady = true
                         strongSelf._ready.set(true)
+                        
+                        if let focusOnItemTag = strongSelf.focusOnItemTag {
+                            strongSelf.focusOnItemTag = nil
+                            
+                            strongSelf.listNode.forEachItemNode { itemNode in
+                                if let itemNode = itemNode as? ItemListItemNode, let tag = itemNode.tag, tag.isEqual(to: focusOnItemTag) {
+                                    itemNode.displayHighlight()
+                                }
+                            }
+                        }
                     }
                 }
             })
@@ -781,13 +793,12 @@ final class LocalizationListControllerNode: ViewControllerTracingNode {
             guard let strongSelf = self else {
                 return
             }
-            let shareController = ShareController(context: strongSelf.context, subject: .url("https://t.me/setlanguage/\(info.languageCode)"))
-            shareController.actionCompleted = { [weak self] in
+            let shareController = strongSelf.context.sharedContext.makeShareController(context: strongSelf.context, params: ShareControllerParams(subject: .url("https://t.me/setlanguage/\(info.languageCode)"), actionCompleted: { [weak self] in
                 if let strongSelf = self {
                     let presentationData = strongSelf.context.sharedContext.currentPresentationData.with { $0 }
                     strongSelf.present(UndoOverlayController(presentationData: presentationData, content: .linkCopied(title: nil, text: presentationData.strings.Conversation_LinkCopied), elevatedLayout: false, animateInAsReplacement: false, action: { _ in return false }), nil)
                 }
-            }
+            }))
             strongSelf.present(shareController, nil)
         }))
         controller.setItemGroups([

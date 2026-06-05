@@ -508,12 +508,8 @@ final class GiftsListView: UIView {
                         ribbonColor = .green
                         ribbonOutline =  params.presentationData.theme.list.blocksBackgroundColor
                     } else {
-                        if product.pinnedToTop || self.canSelect || self.isCollection {
-                            ribbonFont = .monospaced
-                            ribbonText = "#\(gift.number)"
-                        } else {
-                            ribbonText = params.presentationData.strings.PeerInfo_Gifts_OneOf(compactNumericCountString(Int(gift.availability.issued), decimalSeparator: params.presentationData.dateTimeFormat.decimalSeparator)).string
-                        }
+                        ribbonFont = .monospaced
+                        ribbonText = "#\(gift.number)"
                         for attribute in gift.attributes {
                             if case let .backdrop(_, _, innerColor, outerColor, _, _, _) = attribute {
                                 ribbonColor = .custom(outerColor, innerColor)
@@ -540,6 +536,7 @@ final class GiftsListView: UIView {
                     component: AnyComponent(
                         GiftItemComponent(
                             context: self.context,
+                            style: .glass,
                             theme: params.presentationData.theme,
                             strings: params.presentationData.strings,
                             peer: peer,
@@ -605,6 +602,7 @@ final class GiftsListView: UIView {
                                         subject: .profileGift(self.peerId, product),
                                         allSubjects: allSubjects,
                                         index: index,
+                                        profileGiftsContext: self.profileGifts,
                                         updateSavedToProfile: { [weak self] reference, added in
                                             guard let self else {
                                                 return

@@ -115,6 +115,7 @@ private var declaredEncodables: Void = {
     declareEncodable(ViewCountMessageAttribute.self, f: { ViewCountMessageAttribute(decoder: $0) })
     declareEncodable(ForwardCountMessageAttribute.self, f: { ForwardCountMessageAttribute(decoder: $0) })
     declareEncodable(BoostCountMessageAttribute.self, f: { BoostCountMessageAttribute(decoder: $0) })
+    declareEncodable(ParticipantRankMessageAttribute.self, f: { ParticipantRankMessageAttribute(decoder: $0) })
     declareEncodable(NotificationInfoMessageAttribute.self, f: { NotificationInfoMessageAttribute(decoder: $0) })
     declareEncodable(TelegramMediaAction.self, f: { TelegramMediaAction(decoder: $0) })
     declareEncodable(TelegramPeerNotificationSettings.self, f: { TelegramPeerNotificationSettings(decoder: $0) })
@@ -241,6 +242,7 @@ private var declaredEncodables: Void = {
     declareEncodable(TelegramMediaLiveStream.self, f: { TelegramMediaLiveStream(decoder: $0) })
     declareEncodable(ScheduledRepeatAttribute.self, f: { ScheduledRepeatAttribute(decoder: $0) })
     declareEncodable(SummarizationMessageAttribute.self, f: { SummarizationMessageAttribute(decoder: $0) })
+    declareEncodable(GuestChatMessageAttribute.self, f: { GuestChatMessageAttribute(decoder: $0) })
     return
 }()
 
@@ -502,7 +504,8 @@ private func cleanupAccount(networkArguments: NetworkInitializationArguments, ac
                 }
                 |> mapToSignal { result -> Signal<Void, NoError> in
                     switch result {
-                    case let .loggedOut(_, futureAuthToken):
+                    case let .loggedOut(loggedOutData):
+                        let futureAuthToken = loggedOutData.futureAuthToken
                         if let futureAuthToken = futureAuthToken {
                             storeFutureLoginToken(accountManager: accountManager, token: futureAuthToken.makeData())
                         }

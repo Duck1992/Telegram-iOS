@@ -686,7 +686,8 @@ private final class ChatMessageTodoItemNode: ASDisplayNode {
                     TelegramTextAttributes.PeerTextMention,
                     TelegramTextAttributes.BotCommand,
                     TelegramTextAttributes.Hashtag,
-                    TelegramTextAttributes.BankCard
+                    TelegramTextAttributes.BankCard,
+                    TelegramTextAttributes.Date
                 ]
                 for name in possibleNames {
                     if let _ = attributes[NSAttributedString.Key(rawValue: name)], let textRects = textNode.textNode.attributeRects(name: name, at: index) {
@@ -768,10 +769,10 @@ private final class ChatMessageTodoItemNode: ASDisplayNode {
                 linkColor: messageTheme.linkTextColor,
                 baseFont: presentationData.messageFont,
                 linkFont: presentationData.messageFont,
-                boldFont: presentationData.messageFont,
-                italicFont: presentationData.messageFont,
-                boldItalicFont: presentationData.messageFont,
-                fixedFont: presentationData.messageFont,
+                boldFont: presentationData.messageBoldFont,
+                italicFont: presentationData.messageItalicFont,
+                boldItalicFont: presentationData.messageBoldItalicFont,
+                fixedFont: presentationData.messageFixedFont,
                 blockQuoteFont: presentationData.messageFont,
                 underlineLinks: underlineLinks,
                 message: message
@@ -1584,7 +1585,8 @@ public class ChatMessageTodoBubbleContentNode: ChatMessageBubbleContentNode {
                     TelegramTextAttributes.PeerTextMention,
                     TelegramTextAttributes.BotCommand,
                     TelegramTextAttributes.Hashtag,
-                    TelegramTextAttributes.BankCard
+                    TelegramTextAttributes.BankCard,
+                    TelegramTextAttributes.Date
                 ]
                 for name in possibleNames {
                     if let _ = attributes[NSAttributedString.Key(rawValue: name)], let textRects = self.textNode.textNode.attributeRects(name: name, at: index) {

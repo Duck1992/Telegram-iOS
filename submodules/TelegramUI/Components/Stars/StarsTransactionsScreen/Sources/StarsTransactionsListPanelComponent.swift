@@ -345,7 +345,7 @@ final class StarsTransactionsListPanelComponent: Component {
                                     itemSubtitle = item.count.amount > StarsAmount.zero ? environment.strings.Stars_Intro_Transaction_ConvertedGift : environment.strings.Stars_Intro_Transaction_Gift
                                 case let .unique(gift):
                                     for attribute in gift.attributes {
-                                        if case let .model(_, file, _) = attribute {
+                                        if case let .model(_, file, _, _) = attribute {
                                             itemFile = file
                                             break
                                         }
@@ -378,6 +378,8 @@ final class StarsTransactionsListPanelComponent: Component {
                                 itemSubtitle = environment.strings.Stars_Intro_Transaction_Gift_Title
                             } else if let _ = item.subscriptionPeriod {
                                 itemSubtitle = environment.strings.Stars_Intro_Transaction_SubscriptionFee_Title
+                            } else if let permille = item.starrefCommissionPermille {
+                                itemSubtitle = environment.strings.Stars_Intro_Transaction_Commission_Title("\(formatPermille(permille))%").string
                             } else {
                                 itemSubtitle = nil
                             }

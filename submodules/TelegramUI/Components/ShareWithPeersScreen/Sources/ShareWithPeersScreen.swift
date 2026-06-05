@@ -774,10 +774,10 @@ final class ShareWithPeersScreenComponent: Component {
                             if item.peer.id == context.account.peerId {
                                 continue
                             }
-                            if let user = item.peer as? TelegramUser, user.botInfo != nil {
+                            if case let .user(user) = item.peer, user.botInfo != nil {
                                 continue
                             }
-                            peers.append(EnginePeer(item.peer))
+                            peers.append(item.peer)
                         }
                         if !list.list.isEmpty {
                             subscriber.putNext(peers)
@@ -958,7 +958,7 @@ final class ShareWithPeersScreenComponent: Component {
                     let isSelected = self.shareToFolders.contains(where: { $0.id == folderPreview.folder.id })
                     items.append(.action(ContextMenuActionItem(text: folderPreview.folder.title, icon: icon, additionalLeftIcon: { theme in
                         if !isSelected {
-                            return nil
+                            return UIImage()
                         }
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Check"), color: theme.contextMenu.primaryColor)
                     }, iconSource: iconSource, iconPosition: .left, action: { [weak self] c, f in
@@ -979,7 +979,7 @@ final class ShareWithPeersScreenComponent: Component {
                     })))
                 }
                 
-                let contextController = ContextController(presentationData: presentationData, source: .reference(HeaderContextReferenceContentSource(controller: controller, sourceView: sourceView, actionsOnTop: true)), items: .single(ContextController.Items(id: AnyHashable(0), content: .list(items))), gesture: nil)
+                let contextController = makeContextController(presentationData: presentationData, source: .reference(HeaderContextReferenceContentSource(controller: controller, sourceView: sourceView, actionsOnTop: true)), items: .single(ContextController.Items(id: AnyHashable(0), content: .list(items))), gesture: nil)
                 controller.presentInGlobalOverlay(contextController)
             }
         }
@@ -2765,7 +2765,7 @@ final class ShareWithPeersScreenComponent: Component {
             let navigationLeftButtonSize = self.navigationLeftButton.update(
                 transition: transition,
                 component: AnyComponent(GlassBarButtonComponent(
-                    size: CGSize(width: 40.0, height: 40.0),
+                    size: CGSize(width: 44.0, height: 44.0),
                     backgroundColor: environment.theme.rootController.navigationBar.glassBarButtonBackgroundColor,
                     isDark: environment.theme.overallDarkAppearance,
                     state: .generic,

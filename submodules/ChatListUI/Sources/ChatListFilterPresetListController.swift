@@ -45,6 +45,8 @@ private enum ChatListFilterPresetListSection: Int32 {
 }
 
 public enum ChatListFilterPresetListEntryTag: ItemListItemTag {
+    case edit
+    case addRecommended
     case displayTags
     
     public func isEqual(to other: ItemListItemTag) -> Bool {
@@ -175,7 +177,7 @@ private enum ChatListFilterPresetListEntry: ItemListNodeEntry {
         case let .screenHeader(text):
             return ChatListFilterSettingsHeaderItem(context: arguments.context, theme: presentationData.theme, text: text, animation: .folders, sectionId: self.section)
         case let .suggestedListHeader(text):
-            return ItemListSectionHeaderItem(presentationData: presentationData, text: text, multiline: true, sectionId: self.section)
+            return ItemListSectionHeaderItem(presentationData: presentationData, text: text, multiline: true, sectionId: self.section, tag: ChatListFilterPresetListEntryTag.addRecommended)
         case let .suggestedPreset(_, title, label, preset):
             return ChatListFilterPresetListSuggestedItem(presentationData: presentationData, systemStyle: .glass, title: title.text, label: label, sectionId: self.section, style: .blocks, installAction: {
                 arguments.addSuggestedPressed(title, preset)
@@ -318,12 +320,20 @@ public enum ChatListFilterPresetListControllerMode {
     case modal
 }
 
-public func chatListFilterPresetListController(context: AccountContext, mode: ChatListFilterPresetListControllerMode, scrollToTags: Bool = false, dismissed: (() -> Void)? = nil) -> ViewController {
+public func chatListFilterPresetListController(context: AccountContext, mode: ChatListFilterPresetListControllerMode, scrollToTags: Bool = false, focusOnItemTag: ChatListFilterPresetListEntryTag? = nil,  dismissed: (() -> Void)? = nil) -> ViewController {
     let initialState = ChatListFilterPresetListControllerState()
     let statePromise = ValuePromise(initialState, ignoreRepeated: true)
     let stateValue = Atomic(value: initialState)
     let updateState: ((ChatListFilterPresetListControllerState) -> ChatListFilterPresetListControllerState) -> Void = { f in
         statePromise.set(stateValue.modify { f($0) })
+    }
+    
+    if focusOnItemTag == .edit {
+        updateState { state in
+            var state = state
+            state.isEditing = true
+            return state
+        }
     }
     
     var dismissImpl: (() -> Void)?
@@ -570,18 +580,18 @@ public func chatListFilterPresetListController(context: AccountContext, mode: Ch
         pushControllerImpl?(controller)
     })
         
-    let featuredFilters = context.account.postbox.preferencesView(keys: [PreferencesKeys.chatListFiltersFeaturedState])
+    let featuredFilters = context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.chatListFiltersFeaturedState))
     |> map { preferences -> [ChatListFeaturedFilter] in
-        guard let state = preferences.values[PreferencesKeys.chatListFiltersFeaturedState]?.get(ChatListFiltersFeaturedState.self) else {
+        guard let state = preferences?.get(ChatListFiltersFeaturedState.self) else {
             return []
         }
         return state.filters
     }
     |> distinctUntilChanged
-        
+
     let updatedFilterOrder = Promise<[Int32]?>(nil)
-    
-    let preferences = context.account.postbox.preferencesView(keys: [ApplicationSpecificPreferencesKeys.chatListFilterSettings])
+
+    let preferences = context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: ApplicationSpecificPreferencesKeys.chatListFilterSettings))
     
     let previousDisplayTags = Atomic<Bool?>(value: nil)
     
@@ -612,7 +622,7 @@ public func chatListFilterPresetListController(context: AccountContext, mode: Ch
         case .default:
             leftNavigationButton = nil
         case .modal:
-            leftNavigationButton = ItemListNavigationButton(content: .text(presentationData.strings.Common_Close), style: .regular, enabled: true, action: {
+            leftNavigationButton = ItemListNavigationButton(content: .text("___close"), style: .regular, enabled: true, action: {
                 dismissImpl?()
             })
         }
@@ -680,7 +690,7 @@ public func chatListFilterPresetListController(context: AccountContext, mode: Ch
         
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(presentationData.strings.ChatListFolderSettings_Title), leftNavigationButton: leftNavigationButton, rightNavigationButton: rightNavigationButton, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: false)
         let entries = chatListFilterPresetListControllerEntries(presentationData: presentationData, state: state, filters: filtersWithCountsValue, updatedFilterOrder: updatedFilterOrderValue, suggestedFilters: suggestedFilters, displayTags: displayTags, isPremium: isPremium, limits: limits, premiumLimits: premiumLimits)
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, initialScrollToItem: scrollToTags ? ListViewScrollToItem(index: entries.count - 1, position: .center(.bottom), animated: true, curve: .Spring(duration: 0.4), directionHint: .Down) : nil, animateChanges: true)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, ensureVisibleItemTag: focusOnItemTag, initialScrollToItem: scrollToTags ? ListViewScrollToItem(index: entries.count - 1, position: .center(.bottom), animated: true, curve: .Spring(duration: 0.4), directionHint: .Down) : nil, animateChanges: true)
         
         return (controllerState, (listState, arguments))
     }
@@ -797,14 +807,26 @@ public func chatListFilterPresetListController(context: AccountContext, mode: Ch
             }
         })
     })
+    
+    var didFocusOnItem = false
     controller.afterTransactionCompleted = { [weak controller] in
+        guard let controller else {
+            return
+        }
+        
+        if let focusOnItemTag, !didFocusOnItem {
+            controller.forEachItemNode { itemNode in
+                if let itemNode = itemNode as? ItemListItemNode, let tag = itemNode.tag, tag.isEqual(to: focusOnItemTag) {
+                    didFocusOnItem = true
+                    itemNode.displayHighlight()
+                }
+            }
+        }
+        
         guard let toggleDirection = animateNextShowHideTagsTransition.swap(nil) else {
             return
         }
         
-        guard let controller else {
-            return
-        }
         var presetItemNodes: [ChatListFilterPresetListItemNode] = []
         controller.forEachItemNode { itemNode in
             if let itemNode = itemNode as? ChatListFilterPresetListItemNode {

@@ -547,12 +547,13 @@ private final class AlertScreenComponent: Component {
             self.containerView.update(size: availableSize, isDark: environment.theme.overallDarkAppearance, transition: transition)
             
             var availableHeight = availableSize.height
+            availableHeight -= environment.statusBarHeight
             if component.configuration.allowInputInset, environment.inputHeight > 0.0 {
                 availableHeight -= environment.inputHeight
             }
                         
-            transition.setFrame(view: self.backgroundView, frame: CGRect(origin: CGPoint(x: floorToScreenPixels((availableSize.width - alertSize.width) / 2.0), y: floorToScreenPixels((availableHeight - alertSize.height) / 2.0)), size: alertSize))
-            self.backgroundView.update(size: alertSize, shape: .roundedRect(cornerRadius: 35.0), isDark: environment.theme.overallDarkAppearance, tintColor: .init(kind: .panel, color: .white), isInteractive: true, transition: transition)
+            transition.setFrame(view: self.backgroundView, frame: CGRect(origin: CGPoint(x: floorToScreenPixels((availableSize.width - alertSize.width) / 2.0), y: environment.statusBarHeight +  floorToScreenPixels((availableHeight - alertSize.height) / 2.0)), size: alertSize))
+            self.backgroundView.update(size: alertSize, cornerRadius: 35.0, isDark: environment.theme.overallDarkAppearance, tintColor: .init(kind: .panel), isInteractive: true, transition: transition)
             
             return availableSize
         }
@@ -747,6 +748,15 @@ open class AlertScreen: ViewControllerComponentContainer, KeyShortcutResponder {
             ))
         }
         
+        if content.isEmpty {
+            content.append(AnyComponentWithIdentity(
+                id: "text",
+                component: AnyComponent(
+                    AlertTextComponent(content: .plain(" "), action: textAction)
+                )
+            ))
+        }
+        
         self.init(
             configuration: configuration,
             content: content,
@@ -798,6 +808,8 @@ open class AlertScreen: ViewControllerComponentContainer, KeyShortcutResponder {
     override open func dismiss(completion: (() -> Void)? = nil) {
         if !self.processedDidDisappear {
             self.processedDidDisappear = true
+            
+            self.view.window?.endEditing(true)
             
             if let componentView = self.node.hostView.componentView as? AlertScreenComponent.View {
                 let dismissedByTapOutside = componentView.dismissedByTapOutside

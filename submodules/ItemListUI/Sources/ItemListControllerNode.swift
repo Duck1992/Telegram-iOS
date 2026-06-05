@@ -310,7 +310,7 @@ open class ItemListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         self.navigationBar = navigationBar
         
         self.listNodeContainer = ASDisplayNode()
-        self.listNode = ListView()
+        self.listNode = ListViewImpl()
         self.leftOverlayNode = ASDisplayNode()
         self.leftOverlayNode.isUserInteractionEnabled = false
         self.rightOverlayNode = ASDisplayNode()
@@ -370,7 +370,7 @@ open class ItemListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             }
         }
         
-        self.listNode.visibleContentOffsetChanged = { [weak self] offset in
+        self.listNode.visibleContentOffsetChanged = { [weak self] offset, _ in
             guard let strongSelf = self else {
                 return
             }

@@ -448,6 +448,34 @@ public class PremiumLimitDisplayComponent: Component {
                     }
                     view.frame = CGRect(origin: CGPoint(x: activityPosition - 12.0 - inactiveValueSize.width, y: floorToScreenPixels((lineHeight - inactiveValueSize.height) / 2.0)), size: inactiveValueSize)
                 }
+                                
+                let activeValueSize = self.activeValueLabel.update(
+                    transition: .immediate,
+                    component: AnyComponent(
+                        MultilineTextComponent(
+                            text: .plain(
+                                NSAttributedString(
+                                    string: component.activeValue,
+                                    font: Font.semibold(15.0),
+                                    textColor: rightTextColor
+                                )
+                            )
+                        )
+                    ),
+                    environment: {},
+                    containerSize: availableSize
+                )
+                let activeValueLabelFrame = CGRect(origin: CGPoint(x: containerFrame.width - 12.0 - activeValueSize.width, y: floorToScreenPixels((lineHeight - activeValueSize.height) / 2.0)), size: activeValueSize)
+                if let view = self.activeValueLabel.view {
+                    if view.superview == nil {
+                        self.container.addSubview(view)
+                        
+                        if component.invertProgress {
+                            self.container.bringSubviewToFront(self.activeContainer)
+                        }
+                    }
+                    view.frame = activeValueLabelFrame
+                }
                 
                 let activeTitleSize = self.activeTitleLabel.update(
                     transition: .immediate,
@@ -470,33 +498,12 @@ public class PremiumLimitDisplayComponent: Component {
                         self.container.addSubview(view)
                     }
                     view.frame = CGRect(origin: CGPoint(x: activityPosition + 12.0, y: floorToScreenPixels((lineHeight - activeTitleSize.height) / 2.0)), size: activeTitleSize)
-                }
-                
-                let activeValueSize = self.activeValueLabel.update(
-                    transition: .immediate,
-                    component: AnyComponent(
-                        MultilineTextComponent(
-                            text: .plain(
-                                NSAttributedString(
-                                    string: component.activeValue,
-                                    font: Font.semibold(15.0),
-                                    textColor: rightTextColor
-                                )
-                            )
-                        )
-                    ),
-                    environment: {},
-                    containerSize: availableSize
-                )
-                if let view = self.activeValueLabel.view {
-                    if view.superview == nil {
-                        self.container.addSubview(view)
-                        
-                        if component.invertProgress {
-                            self.container.bringSubviewToFront(self.activeContainer)
-                        }
+                    
+                    if view.frame.maxX > activeValueLabelFrame.minX - 8.0 {
+                        view.alpha = 0.0
+                    } else {
+                        view.alpha = 1.0
                     }
-                    view.frame = CGRect(origin: CGPoint(x: containerFrame.width - 12.0 - activeValueSize.width, y: floorToScreenPixels((lineHeight - activeValueSize.height) / 2.0)), size: activeValueSize)
                 }
             }
                         
@@ -857,10 +864,10 @@ private final class LimitSheetContent: CombinedComponent {
 
             let closeButton = closeButton.update(
                 component: GlassBarButtonComponent(
-                    size: CGSize(width: 40.0, height: 40.0),
-                    backgroundColor: theme.rootController.navigationBar.glassBarButtonBackgroundColor,
+                    size: CGSize(width: 44.0, height: 44.0),
+                    backgroundColor: nil,
                     isDark: theme.overallDarkAppearance,
-                    state: .generic,
+                    state: .glass,
                     component: AnyComponentWithIdentity(id: "close", component: AnyComponent(
                         BundleIconComponent(
                             name: "Navigation/Close",
@@ -872,7 +879,7 @@ private final class LimitSheetContent: CombinedComponent {
                         component.cancel()
                     }
                 ),
-                availableSize: CGSize(width: 40.0, height: 40.0),
+                availableSize: CGSize(width: 44.0, height: 44.0),
                 transition: .immediate
             )
             context.add(closeButton
@@ -1519,7 +1526,7 @@ private final class LimitSheetContent: CombinedComponent {
                 }
                 
                 context.add(title
-                    .position(CGPoint(x: context.availableSize.width / 2.0, y: 36.0))
+                    .position(CGPoint(x: context.availableSize.width / 2.0, y: 38.0))
                 )
                 
                 var textSize: CGSize
@@ -1763,6 +1770,8 @@ private final class LimitSheetComponent: CombinedComponent {
                 environment: {
                     environment
                     SheetComponentEnvironment(
+                        metrics: environment.metrics,
+                        deviceMetrics: environment.deviceMetrics,
                         isDisplaying: environment.value.isVisible,
                         isCentered: environment.metrics.widthClass == .regular,
                         hasInputHeight: !environment.inputHeight.isZero,

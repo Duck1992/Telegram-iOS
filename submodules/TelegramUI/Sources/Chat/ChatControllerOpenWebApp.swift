@@ -482,7 +482,7 @@ public extension ChatControllerImpl {
                 context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: context, chatLocation: .peer(peer), subject: subject, keepStack: .always, peekData: peekData))
             case .info:
                 if peer.restrictionText(platform: "ios", contentSettings: context.currentContentSettings.with { $0 }) == nil {
-                    if let infoController = context.sharedContext.makePeerInfoController(context: context, updatedPresentationData: nil, peer: peer._asPeer(), mode: .generic, avatarInitiallyExpanded: false, fromChat: false, requestsContext: nil) {
+                    if let infoController = context.sharedContext.makePeerInfoController(context: context, updatedPresentationData: nil, peer: peer, mode: .generic, avatarInitiallyExpanded: false, fromChat: false, requestsContext: nil) {
                         navigationController.pushViewController(infoController)
                     }
                 }
@@ -652,6 +652,8 @@ public extension ChatControllerImpl {
                 },
                 context.engine.data.get(TelegramEngine.EngineData.Item.Peer.BotAppSettings(id: botPeer.id))
             ).startStandalone(next: { [weak parentController, weak chatController] noticed, attachMenuBots, attachMenuBot, appSettings in
+                chatController?.chatDisplayNode.dismissInput()
+                
                 var isAttachMenuBotInstalled: Bool?
                 if let _ = attachMenuBot {
                     if let _ = attachMenuBots.first(where: { $0.peer.id == botPeer.id && !$0.flags.contains(.notActivated) }) {

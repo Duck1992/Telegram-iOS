@@ -90,6 +90,7 @@ public enum DataAndStorageEntryTag: ItemListItemTag, Equatable {
     case raiseToListen
     case autoSave(AutomaticSaveIncomingPeerType)
     case sensitiveContent
+    case useLessVoiceData
     
     public func isEqual(to other: ItemListItemTag) -> Bool {
         if let other = other as? DataAndStorageEntryTag, self == other {
@@ -362,21 +363,21 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
         let arguments = arguments as! DataAndStorageControllerArguments
         switch self {
             case let .storageUsage(_, text, value):
-                return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: UIImage(bundleImageName: "Settings/Menu/Storage")?.precomposed(), title: text, label: value, sectionId: self.section, style: .blocks, action: {
+                return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: PresentationResourcesSettings.storageUsage, title: text, label: value, sectionId: self.section, style: .blocks, action: {
                     arguments.openStorageUsage()
                 })
             case let .networkUsage(_, text, value):
-                return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: UIImage(bundleImageName: "Settings/Menu/Network")?.precomposed(), title: text, label: value, sectionId: self.section, style: .blocks, action: {
+                return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: PresentationResourcesSettings.dataUsage, title: text, label: value, sectionId: self.section, style: .blocks, action: {
                     arguments.openNetworkUsage()
                 })
             case let .automaticDownloadHeader(_, text):
                 return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
             case let .automaticDownloadCellular(_, text, value):
-                return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: UIImage(bundleImageName: "Settings/Menu/Cellular")?.precomposed(), title: text, label: value, labelStyle: .detailText, sectionId: self.section, style: .blocks, action: {
+                return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: PresentationResourcesSettings.cellular, title: text, label: value, labelStyle: .detailText, sectionId: self.section, style: .blocks, action: {
                     arguments.openAutomaticDownloadConnectionType(.cellular)
                 })
             case let .automaticDownloadWifi(_, text, value):
-                return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: UIImage(bundleImageName: "Settings/Menu/WiFi")?.precomposed(), title: text, label: value, labelStyle: .detailText, sectionId: self.section, style: .blocks, action: {
+                return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: PresentationResourcesSettings.wifi, title: text, label: value, labelStyle: .detailText, sectionId: self.section, style: .blocks, action: {
                     arguments.openAutomaticDownloadConnectionType(.wifi)
                 })
             case let .automaticDownloadReset(theme, text, enabled):
@@ -388,20 +389,20 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
                     if enabled {
                         arguments.resetAutomaticDownload()
                     }
-                })
+                }, tag: DataAndStorageEntryTag.automaticDownloadReset)
             case let .autoSaveHeader(text):
                 return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
             case let .autoSaveItem(_, type, title, label, value):
-                let iconName: String
+                let icon: UIImage?
                 switch type {
                 case .privateChats:
-                    iconName = "Settings/Menu/EditProfile"
+                    icon = PresentationResourcesSettings.privateChats
                 case .groups:
-                    iconName = "Settings/Menu/GroupChats"
+                    icon = PresentationResourcesSettings.groups
                 case .channels:
-                    iconName = "Settings/Menu/Channels"
+                    icon = PresentationResourcesSettings.channels
                 }
-                return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: UIImage(bundleImageName: iconName)?.precomposed(), title: title, label: value, labelStyle: .text, additionalDetailLabel: label.isEmpty ? nil : label, sectionId: self.section, style: .blocks, action: {
+                return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: icon, title: title, label: value, labelStyle: .text, additionalDetailLabel: label.isEmpty ? nil : label, sectionId: self.section, style: .blocks, action: {
                     arguments.openSaveIncoming(type)
                 })
             case let .autoSaveInfo(text):
@@ -409,7 +410,7 @@ private enum DataAndStorageEntry: ItemListNodeEntry {
             case let .useLessVoiceData(_, text, value):
                 return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
                     arguments.toggleVoiceUseLessData(value)
-                }, tag: nil)
+                }, tag: DataAndStorageEntryTag.useLessVoiceData)
             case let .useLessVoiceDataInfo(_, text):
                 return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
             case let .otherHeader(_, text):
@@ -1012,6 +1013,20 @@ public func dataAndStorageController(context: AccountContext, focusOnItemTag: Da
             update()
         })
     }
-
+    
+    if let focusOnItemTag {
+        var didFocusOnItem = false
+        controller.afterTransactionCompleted = { [weak controller] in
+            if !didFocusOnItem, let controller {
+                controller.forEachItemNode { itemNode in
+                    if let itemNode = itemNode as? ItemListItemNode, let tag = itemNode.tag, tag.isEqual(to: focusOnItemTag) {
+                        didFocusOnItem = true
+                        itemNode.displayHighlight()
+                    }
+                }
+            }
+        }
+    }
+    
     return controller
 }

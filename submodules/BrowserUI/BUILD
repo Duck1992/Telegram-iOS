@@ -31,6 +31,7 @@ swift_library(
         "//submodules/TelegramUI/Components/MinimizedContainer",
         "//submodules/Pasteboard",
         "//submodules/SaveToCameraRoll",
+        "//submodules/TextFormat:TextFormat",
         "//submodules/TelegramUI/Components/NavigationStackComponent",
         "//submodules/LocationUI",
         "//submodules/OpenInExternalAppUI",
@@ -57,6 +58,8 @@ swift_library(
         "//submodules/TelegramUI/Components/GlassBarButtonComponent",
         "//submodules/TelegramUI/Components/SearchInputPanelComponent",
         "//submodules/TelegramUI/Components/GlassControls",
+        "//submodules/UIKitRuntimeUtils",
+        "//submodules/TelegramUI/Components/AuthConfirmationScreen",
     ],
     visibility = [
         "//visibility:public",

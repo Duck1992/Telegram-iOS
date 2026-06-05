@@ -472,6 +472,7 @@ public final class ChatTextInputPanelComponent: Component {
                         var presentationInterfaceState = ChatPresentationInterfaceState(
                             chatWallpaper: .color(0),
                             theme: component.theme,
+                            preferredGlassType: .default,
                             strings: component.strings,
                             dateTimeFormat: PresentationDateTimeFormat(),
                             nameDisplayOrder: .firstLast,
@@ -486,7 +487,6 @@ public final class ChatTextInputPanelComponent: Component {
                             mode: .standard(.default),
                             chatLocation: .peer(id: component.chatPeerId),
                             subject: nil,
-                            peerNearbyData: nil,
                             greetingData: nil,
                             pendingUnpinnedAllMessages: false,
                             activeGroupCallInfo: nil,
@@ -600,6 +600,8 @@ public final class ChatTextInputPanelComponent: Component {
                     sendSticker: { _, _, _, _, _, _ in
                         return false
                     },
+                    editSticker: { _ in
+                    },
                     unblockPeer: {
                     },
                     pinMessage: { _, _ in
@@ -648,6 +650,8 @@ public final class ChatTextInputPanelComponent: Component {
                     unarchiveChat: {
                     },
                     openLinkEditing: {
+                    },
+                    openDateEditing: {
                     },
                     displaySlowmodeTooltip: { _, _ in
                     },
@@ -751,7 +755,13 @@ public final class ChatTextInputPanelComponent: Component {
                     },
                     displayUndo: { _ in
                     },
+                    presentInputTextTranslation: { _, _ in
+                    },
                     sendEmoji: { _, _, _ in
+                    },
+                    openAICompose: {
+                    },
+                    openSetPeerAvatar: {
                     },
                     updateHistoryFilter: { _ in
                     },
@@ -773,6 +783,7 @@ public final class ChatTextInputPanelComponent: Component {
             var presentationInterfaceState = ChatPresentationInterfaceState(
                 chatWallpaper: .color(0),
                 theme: component.theme,
+                preferredGlassType: .default,
                 strings: component.strings,
                 dateTimeFormat: PresentationDateTimeFormat(),
                 nameDisplayOrder: .firstLast,
@@ -787,7 +798,6 @@ public final class ChatTextInputPanelComponent: Component {
                 mode: .standard(.default),
                 chatLocation: .peer(id: component.chatPeerId),
                 subject: nil,
-                peerNearbyData: nil,
                 greetingData: nil,
                 pendingUnpinnedAllMessages: false,
                 activeGroupCallInfo: nil,
@@ -833,7 +843,7 @@ public final class ChatTextInputPanelComponent: Component {
             
             if let sendAsConfiguration = component.sendAsConfiguration {
                 presentationInterfaceState = presentationInterfaceState.updatedSendAsPeers([SendAsPeer(
-                    peer: sendAsConfiguration.currentPeer._asPeer(),
+                    peer: sendAsConfiguration.currentPeer,
                     subscribers: sendAsConfiguration.subscriberCount.flatMap(Int32.init(clamping:)),
                     isPremiumRequired: sendAsConfiguration.isPremiumLocked
                 )]).updatedShowSendAsPeers(sendAsConfiguration.isSelecting).updatedCurrentSendAsPeerId(sendAsConfiguration.currentPeer.id)
@@ -1040,6 +1050,7 @@ public final class ChatTextInputPanelComponent: Component {
                 transition: transition.containedViewLayoutTransition,
                 interfaceState: presentationInterfaceState,
                 metrics: LayoutMetrics(widthClass: .compact, heightClass: .compact, orientation: nil),
+                deviceMetrics: DeviceMetrics.iPhone16Pro,
                 isMediaInputExpanded: false
             )
             

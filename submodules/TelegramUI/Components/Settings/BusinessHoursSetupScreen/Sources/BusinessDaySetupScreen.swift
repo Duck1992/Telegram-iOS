@@ -3,7 +3,6 @@ import UIKit
 import Display
 import AsyncDisplayKit
 import SwiftSignalKit
-import Postbox
 import TelegramCore
 import TelegramPresentationData
 import TelegramUIPreferences
@@ -20,6 +19,7 @@ import LottieComponent
 import Markdown
 import LocationUI
 import TelegramStringFormatting
+import TextFormat
 import PlainButtonComponent
 import TimeSelectionActionSheet
 

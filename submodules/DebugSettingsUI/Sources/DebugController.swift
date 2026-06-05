@@ -96,6 +96,9 @@ private enum DebugControllerEntry: ItemListNodeEntry {
     case experimentalCompatibility(Bool)
     case enableDebugDataDisplay(Bool)
     case fakeGlass(Bool)
+    case forceClearGlass(Bool)
+    case debugRipple(Bool)
+    case debugRichText(Bool)
     case browserExperiment(Bool)
     case allForumsHaveTabs(Bool)
     case enableReactionOverrides(Bool)
@@ -109,7 +112,7 @@ private enum DebugControllerEntry: ItemListNodeEntry {
     case playerV2(Bool)
     case devRequests(Bool)
     case enableUpdates(Bool)
-    case fakeAds(Bool)
+    case pwa(Bool)
     case enableLocalTranslation(Bool)
     case preferredVideoCodec(Int, String, String?, Bool)
     case disableVideoAspectScaling(Bool)
@@ -135,7 +138,7 @@ private enum DebugControllerEntry: ItemListNodeEntry {
             return DebugControllerSection.web.rawValue
         case .keepChatNavigationStack, .skipReadHistory, .alwaysDisplayTyping, .debugRatingLayout, .crashOnSlowQueries, .crashOnMemoryPressure:
             return DebugControllerSection.experiments.rawValue
-        case .clearTips, .resetNotifications, .crash, .fillLocalSavedMessageCache, .resetDatabase, .resetDatabaseAndCache, .resetHoles, .resetTagHoles, .reindexUnread, .resetCacheIndex, .reindexCache, .resetBiometricsData, .optimizeDatabase, .photoPreview, .knockoutWallpaper, .compressedEmojiCache, .storiesJpegExperiment, .checkSerializedData, .enableQuickReactionSwitch, .experimentalCompatibility, .enableDebugDataDisplay, .fakeGlass, .browserExperiment, .allForumsHaveTabs, .enableReactionOverrides, .restorePurchases, .disableReloginTokens, .liveStreamV2, .experimentalCallMute, .playerV2, .devRequests, .enableUpdates, .fakeAds, .enableLocalTranslation:
+        case .clearTips, .resetNotifications, .crash, .fillLocalSavedMessageCache, .resetDatabase, .resetDatabaseAndCache, .resetHoles, .resetTagHoles, .reindexUnread, .resetCacheIndex, .reindexCache, .resetBiometricsData, .optimizeDatabase, .photoPreview, .knockoutWallpaper, .compressedEmojiCache, .storiesJpegExperiment, .checkSerializedData, .enableQuickReactionSwitch, .experimentalCompatibility, .enableDebugDataDisplay, .fakeGlass, .forceClearGlass, .debugRipple, .debugRichText, .browserExperiment, .allForumsHaveTabs, .enableReactionOverrides, .restorePurchases, .disableReloginTokens, .liveStreamV2, .experimentalCallMute, .playerV2, .devRequests, .enableUpdates, .pwa, .enableLocalTranslation:
             return DebugControllerSection.experiments.rawValue
         case .logTranslationRecognition, .resetTranslationStates:
             return DebugControllerSection.translation.rawValue
@@ -228,44 +231,50 @@ private enum DebugControllerEntry: ItemListNodeEntry {
             return 38
         case .fakeGlass:
             return 39
-        case .browserExperiment:
+        case .forceClearGlass:
             return 40
-        case .allForumsHaveTabs:
+        case .debugRipple:
             return 41
-        case .enableReactionOverrides:
+        case .debugRichText:
             return 42
-        case .restorePurchases:
+        case .browserExperiment:
             return 43
-        case .logTranslationRecognition:
+        case .allForumsHaveTabs:
             return 44
-        case .resetTranslationStates:
+        case .enableReactionOverrides:
             return 45
-        case .compressedEmojiCache:
+        case .restorePurchases:
             return 46
-        case .storiesJpegExperiment:
+        case .logTranslationRecognition:
             return 47
-        case .disableReloginTokens:
+        case .resetTranslationStates:
             return 48
-        case .checkSerializedData:
+        case .compressedEmojiCache:
+            return 49
+        case .storiesJpegExperiment:
             return 50
-        case .enableQuickReactionSwitch:
+        case .disableReloginTokens:
             return 51
-        case .liveStreamV2:
+        case .checkSerializedData:
             return 52
-        case .experimentalCallMute:
+        case .enableQuickReactionSwitch:
             return 53
-        case .playerV2:
+        case .liveStreamV2:
             return 54
-        case .devRequests:
+        case .experimentalCallMute:
             return 55
-        case .fakeAds:
+        case .playerV2:
             return 56
-        case .enableLocalTranslation:
+        case .devRequests:
             return 57
-        case .enableUpdates:
+        case .pwa:
             return 58
+        case .enableLocalTranslation:
+            return 59
+        case .enableUpdates:
+            return 60
         case let .preferredVideoCodec(index, _, _, _):
-            return 59 + index
+            return 61 + index
         case .disableVideoAspectScaling:
             return 100
         case .enableNetworkFramework:
@@ -352,7 +361,7 @@ private enum DebugControllerEntry: ItemListNodeEntry {
 
                                     let id = Int64.random(in: Int64.min ... Int64.max)
                                     let fileResource = LocalFileMediaResource(fileId: id, size: Int64(gzippedData.count), isSecretRelated: false)
-                                    context.account.postbox.mediaBox.storeResourceData(fileResource.id, data: gzippedData)
+                                    context.engine.resources.storeResourceData(id: EngineMediaResource.Id(fileResource.id), data: gzippedData)
 
                                     let file = TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: id), partialReference: nil, resource: fileResource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "application/text", size: Int64(gzippedData.count), attributes: [.FileName(fileName: "Log-iOS-Full.txt.zip")], alternativeRepresentations: [])
                                     let message: EnqueueMessage = .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: file), threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])
@@ -432,7 +441,7 @@ private enum DebugControllerEntry: ItemListNodeEntry {
                                         
                                         let id = Int64.random(in: Int64.min ... Int64.max)
                                         let fileResource = LocalFileMediaResource(fileId: id, size: Int64(logData.count), isSecretRelated: false)
-                                        context.account.postbox.mediaBox.storeResourceData(fileResource.id, data: logData)
+                                        context.engine.resources.storeResourceData(id: EngineMediaResource.Id(fileResource.id), data: logData)
                                         
                                         let file = TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: id), partialReference: nil, resource: fileResource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "application/text", size: Int64(logData.count), attributes: [.FileName(fileName: "Log-iOS-Short.txt")], alternativeRepresentations: [])
                                         let message: EnqueueMessage = .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: file), threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])
@@ -518,7 +527,7 @@ private enum DebugControllerEntry: ItemListNodeEntry {
 
                                     let id = Int64.random(in: Int64.min ... Int64.max)
                                     let fileResource = LocalFileMediaResource(fileId: id, size: Int64(gzippedData.count), isSecretRelated: false)
-                                    context.account.postbox.mediaBox.storeResourceData(fileResource.id, data: gzippedData)
+                                    context.engine.resources.storeResourceData(id: EngineMediaResource.Id(fileResource.id), data: gzippedData)
 
                                     let file = TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: id), partialReference: nil, resource: fileResource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "application/text", size: Int64(gzippedData.count), attributes: [.FileName(fileName: "Log-iOS-Full.txt.zip")], alternativeRepresentations: [])
                                     let message: EnqueueMessage = .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: file), threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])
@@ -602,7 +611,7 @@ private enum DebugControllerEntry: ItemListNodeEntry {
 
                                     let id = Int64.random(in: Int64.min ... Int64.max)
                                     let fileResource = LocalFileMediaResource(fileId: id, size: Int64(gzippedData.count), isSecretRelated: false)
-                                    context.account.postbox.mediaBox.storeResourceData(fileResource.id, data: gzippedData)
+                                    context.engine.resources.storeResourceData(id: EngineMediaResource.Id(fileResource.id), data: gzippedData)
 
                                     let file = TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: id), partialReference: nil, resource: fileResource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "application/text", size: Int64(gzippedData.count), attributes: [.FileName(fileName: "Log-iOS-Full.txt.zip")], alternativeRepresentations: [])
                                     let message: EnqueueMessage = .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: file), threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])
@@ -687,7 +696,7 @@ private enum DebugControllerEntry: ItemListNodeEntry {
 
                                     let id = Int64.random(in: Int64.min ... Int64.max)
                                     let fileResource = LocalFileMediaResource(fileId: id, size: Int64(gzippedData.count), isSecretRelated: false)
-                                    context.account.postbox.mediaBox.storeResourceData(fileResource.id, data: gzippedData)
+                                    context.engine.resources.storeResourceData(id: EngineMediaResource.Id(fileResource.id), data: gzippedData)
 
                                     let file = TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: id), partialReference: nil, resource: fileResource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "application/text", size: Int64(gzippedData.count), attributes: [.FileName(fileName: "Log-iOS-Full.txt.zip")], alternativeRepresentations: [])
                                     let message: EnqueueMessage = .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: file), threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])
@@ -849,7 +858,7 @@ private enum DebugControllerEntry: ItemListNodeEntry {
 
                                     let id = Int64.random(in: Int64.min ... Int64.max)
                                     let fileResource = LocalFileMediaResource(fileId: id, size: Int64(gzippedData.count), isSecretRelated: false)
-                                    context.account.postbox.mediaBox.storeResourceData(fileResource.id, data: gzippedData)
+                                    context.engine.resources.storeResourceData(id: EngineMediaResource.Id(fileResource.id), data: gzippedData)
 
                                     let file = TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: id), partialReference: nil, resource: fileResource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "application/zip", size: Int64(gzippedData.count), attributes: [.FileName(fileName: "Log-iOS-All.txt.zip")], alternativeRepresentations: [])
                                     let message: EnqueueMessage = .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: file), threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])
@@ -904,7 +913,7 @@ private enum DebugControllerEntry: ItemListNodeEntry {
 
                                     let id = Int64.random(in: Int64.min ... Int64.max)
                                     let fileResource = LocalFileMediaResource(fileId: id, size: Int64(allStatsData.count), isSecretRelated: false)
-                                    context.account.postbox.mediaBox.storeResourceData(fileResource.id, data: allStatsData)
+                                    context.engine.resources.storeResourceData(id: EngineMediaResource.Id(fileResource.id), data: allStatsData)
 
                                     let file = TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: id), partialReference: nil, resource: fileResource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "application/zip", size: Int64(allStatsData.count), attributes: [.FileName(fileName: "StorageReport.txt")], alternativeRepresentations: [])
                                     let message: EnqueueMessage = .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: file), threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])
@@ -1200,7 +1209,18 @@ private enum DebugControllerEntry: ItemListNodeEntry {
             })
         case .resetWebViewCache:
             return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: "Clear Web View Cache", kind: .destructive, alignment: .natural, sectionId: self.section, style: .blocks, action: {
-                WKWebsiteDataStore.default().removeData(ofTypes: [WKWebsiteDataTypeDiskCache, WKWebsiteDataTypeMemoryCache], modifiedSince: Date(timeIntervalSince1970: 0), completionHandler:{ })
+                WKWebsiteDataStore.default().removeData(ofTypes: [
+                    WKWebsiteDataTypeDiskCache,
+                    WKWebsiteDataTypeOfflineWebApplicationCache,
+                    WKWebsiteDataTypeMemoryCache,
+                    WKWebsiteDataTypeLocalStorage,
+                    WKWebsiteDataTypeCookies,
+                    WKWebsiteDataTypeSessionStorage,
+                    WKWebsiteDataTypeIndexedDBDatabases,
+                    WKWebsiteDataTypeWebSQLDatabases,
+                    WKWebsiteDataTypeFetchCache,
+                    WKWebsiteDataTypeServiceWorkerRegistrations
+                ], modifiedSince: Date(timeIntervalSince1970: 0), completionHandler:{ })
             })
         case .optimizeDatabase:
             return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: "Optimize Database", kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
@@ -1264,6 +1284,36 @@ private enum DebugControllerEntry: ItemListNodeEntry {
                     transaction.updateSharedData(ApplicationSpecificSharedDataKeys.experimentalUISettings, { settings in
                         var settings = settings?.get(ExperimentalUISettings.self) ?? ExperimentalUISettings.defaultSettings
                         settings.fakeGlass = value
+                        return PreferencesEntry(settings)
+                    })
+                }).start()
+            })
+        case let .forceClearGlass(value):
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: "Force clear glass", value: value, sectionId: self.section, style: .blocks, updated: { value in
+                let _ = arguments.sharedContext.accountManager.transaction ({ transaction in
+                    transaction.updateSharedData(ApplicationSpecificSharedDataKeys.experimentalUISettings, { settings in
+                        var settings = settings?.get(ExperimentalUISettings.self) ?? ExperimentalUISettings.defaultSettings
+                        settings.forceClearGlass = value
+                        return PreferencesEntry(settings)
+                    })
+                }).start()
+            })
+        case let .debugRipple(value):
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: "Debug Ripple", value: value, sectionId: self.section, style: .blocks, updated: { value in
+                let _ = arguments.sharedContext.accountManager.transaction ({ transaction in
+                    transaction.updateSharedData(ApplicationSpecificSharedDataKeys.experimentalUISettings, { settings in
+                        var settings = settings?.get(ExperimentalUISettings.self) ?? ExperimentalUISettings.defaultSettings
+                        settings.debugRipple = value
+                        return PreferencesEntry(settings)
+                    })
+                }).start()
+            })
+        case let .debugRichText(value):
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: "Debug Text", value: value, sectionId: self.section, style: .blocks, updated: { value in
+                let _ = arguments.sharedContext.accountManager.transaction ({ transaction in
+                    transaction.updateSharedData(ApplicationSpecificSharedDataKeys.experimentalUISettings, { settings in
+                        var settings = settings?.get(ExperimentalUISettings.self) ?? ExperimentalUISettings.defaultSettings
+                        settings.debugRichText = value
                         return PreferencesEntry(settings)
                     })
                 }).start()
@@ -1392,12 +1442,12 @@ private enum DebugControllerEntry: ItemListNodeEntry {
                     })
                 }).start()
             })
-        case let .fakeAds(value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: "Fake Ads", value: value, sectionId: self.section, style: .blocks, updated: { value in
+        case let .pwa(value):
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: "Test1", value: value, sectionId: self.section, style: .blocks, updated: { value in
                 let _ = arguments.sharedContext.accountManager.transaction ({ transaction in
                     transaction.updateSharedData(ApplicationSpecificSharedDataKeys.experimentalUISettings, { settings in
                         var settings = settings?.get(ExperimentalUISettings.self) ?? ExperimentalUISettings.defaultSettings
-                        settings.fakeAds = value
+                        settings.enablePWA = value
                         return PreferencesEntry(settings)
                     })
                 }).start()
@@ -1488,7 +1538,7 @@ private enum DebugControllerEntry: ItemListNodeEntry {
     }
 }
 
-private func debugControllerEntries(sharedContext: SharedAccountContext, presentationData: PresentationData, loggingSettings: LoggingSettings, mediaInputSettings: MediaInputSettings, experimentalSettings: ExperimentalUISettings, networkSettings: NetworkSettings?, hasLegacyAppData: Bool, useBetaFeatures: Bool) -> [DebugControllerEntry] {
+private func debugControllerEntries(context: AccountContext?, sharedContext: SharedAccountContext, presentationData: PresentationData, loggingSettings: LoggingSettings, mediaInputSettings: MediaInputSettings, experimentalSettings: ExperimentalUISettings, networkSettings: NetworkSettings?, hasLegacyAppData: Bool, useBetaFeatures: Bool) -> [DebugControllerEntry] {
     var entries: [DebugControllerEntry] = []
 
     let isMainApp = sharedContext.applicationBindings.isMainApp
@@ -1544,6 +1594,9 @@ private func debugControllerEntries(sharedContext: SharedAccountContext, present
         entries.append(.experimentalCompatibility(experimentalSettings.experimentalCompatibility))
         entries.append(.enableDebugDataDisplay(experimentalSettings.enableDebugDataDisplay))
         entries.append(.fakeGlass(experimentalSettings.fakeGlass))
+        entries.append(.forceClearGlass(experimentalSettings.forceClearGlass))
+        entries.append(.debugRipple(experimentalSettings.debugRipple))
+        entries.append(.debugRichText(experimentalSettings.debugRichText))
         #if DEBUG
         entries.append(.browserExperiment(experimentalSettings.browserExperiment))
         #else
@@ -1572,7 +1625,18 @@ private func debugControllerEntries(sharedContext: SharedAccountContext, present
         entries.append(.playerV2(experimentalSettings.playerV2))
         
         entries.append(.devRequests(experimentalSettings.devRequests))
-        entries.append(.fakeAds(experimentalSettings.fakeAds))
+        
+        if let data = context?.currentAppConfiguration.with({ $0 }).data {
+            var displayPwa = false
+            if let _ = data["ios_display_pwa"] {
+                displayPwa = true
+            } else if let isDev = data["dev"] as? Double, isDev == 1.0 {
+                displayPwa = true
+            }
+            if displayPwa {
+                entries.append(.pwa(experimentalSettings.enablePWA))
+            }
+        }
         entries.append(.enableLocalTranslation(experimentalSettings.enableLocalTranslation))
         entries.append(.enableUpdates(experimentalSettings.enableUpdates))
     }
@@ -1617,10 +1681,9 @@ public func debugController(sharedContext: SharedAccountContext, context: Accoun
         hasLegacyAppData = FileManager.default.fileExists(atPath: statusPath)
     }
     
-    let preferencesSignal: Signal<PreferencesView?, NoError>
+    let preferencesSignal: Signal<PreferencesEntry?, NoError>
     if let context = context {
-        preferencesSignal = context.account.postbox.preferencesView(keys: [PreferencesKeys.networkSettings])
-        |> map(Optional.init)
+        preferencesSignal = context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.networkSettings))
     } else {
         preferencesSignal = .single(nil)
     }
@@ -1643,7 +1706,7 @@ public func debugController(sharedContext: SharedAccountContext, context: Accoun
         
         let experimentalSettings: ExperimentalUISettings = sharedData.entries[ApplicationSpecificSharedDataKeys.experimentalUISettings]?.get(ExperimentalUISettings.self) ?? ExperimentalUISettings.defaultSettings
         
-        let networkSettings: NetworkSettings? = preferences?.values[PreferencesKeys.networkSettings]?.get(NetworkSettings.self)
+        let networkSettings: NetworkSettings? = preferences?.get(NetworkSettings.self)
         
         var leftNavigationButton: ItemListNavigationButton?
         if modal {
@@ -1658,7 +1721,7 @@ public func debugController(sharedContext: SharedAccountContext, context: Accoun
         }
         
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("Debug"), leftNavigationButton: leftNavigationButton, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: debugControllerEntries(sharedContext: sharedContext, presentationData: presentationData, loggingSettings: loggingSettings, mediaInputSettings: mediaInputSettings, experimentalSettings: experimentalSettings, networkSettings: networkSettings, hasLegacyAppData: hasLegacyAppData, useBetaFeatures: useBetaFeatures), style: .blocks)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: debugControllerEntries(context: context, sharedContext: sharedContext, presentationData: presentationData, loggingSettings: loggingSettings, mediaInputSettings: mediaInputSettings, experimentalSettings: experimentalSettings, networkSettings: networkSettings, hasLegacyAppData: hasLegacyAppData, useBetaFeatures: useBetaFeatures), style: .blocks)
         
         return (controllerState, (listState, arguments))
     }
@@ -1729,7 +1792,7 @@ public func triggerDebugSendLogsUI(context: AccountContext, additionalInfo: Stri
 
                 let id = Int64.random(in: Int64.min ... Int64.max)
                 let fileResource = LocalFileMediaResource(fileId: id, size: Int64(gzippedData.count), isSecretRelated: false)
-                context.account.postbox.mediaBox.storeResourceData(fileResource.id, data: gzippedData)
+                context.engine.resources.storeResourceData(id: EngineMediaResource.Id(fileResource.id), data: gzippedData)
 
                 let file = TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: id), partialReference: nil, resource: fileResource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "application/text", size: Int64(gzippedData.count), attributes: [.FileName(fileName: "Log-iOS-Full.txt.zip")], alternativeRepresentations: [])
                 let message: EnqueueMessage = .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: file), threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])

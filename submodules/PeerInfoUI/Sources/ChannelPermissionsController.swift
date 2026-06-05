@@ -477,10 +477,10 @@ private enum ChannelPermissionsEntry: ItemListNodeEntry {
                     default:
                         break
                 }
-                return ItemListPeerItem(presentationData: presentationData, systemStyle: .glass, dateTimeFormat: dateTimeFormat, nameDisplayOrder: nameDisplayOrder, context: arguments.context, peer: EnginePeer(participant.peer), presence: nil, text: text, label: .none, editing: editing, switchValue: nil, enabled: enabled, selectable: true, sectionId: self.section, action: canOpen ? {
+                return ItemListPeerItem(presentationData: presentationData, systemStyle: .glass, dateTimeFormat: dateTimeFormat, nameDisplayOrder: nameDisplayOrder, context: arguments.context, peer: participant.peer, presence: nil, text: text, label: .none, editing: editing, switchValue: nil, enabled: enabled, selectable: true, sectionId: self.section, action: canOpen ? {
                     arguments.openPeer(participant.participant)
                 } : {
-                    arguments.openPeerInfo(EnginePeer(participant.peer))
+                    arguments.openPeerInfo(participant.peer)
                 }, setPeerIdWithRevealedOptions: { previousId, id in
                     arguments.setPeerIdWithRevealedOptions(previousId, id)
                 }, removePeer: { peerId in
@@ -501,7 +501,7 @@ private struct ChannelPermissionsControllerState: Equatable {
     var expandedPermissions = Set<TelegramChatBannedRightsFlags>()
 }
 
-func stringForGroupPermission(strings: PresentationStrings, right: TelegramChatBannedRightsFlags, isForum: Bool) -> String {
+func stringForGroupPermission(strings: PresentationStrings, right: TelegramChatBannedRightsFlags, isForum: Bool, defaultPermissions: Bool = false) -> String {
     if right.contains(.banSendText) {
         return strings.Channel_BanUser_PermissionSendMessages
     } else if right.contains(.banSendMedia) {
@@ -534,6 +534,14 @@ func stringForGroupPermission(strings: PresentationStrings, right: TelegramChatB
         return strings.Channel_BanUser_PermissionSendVoiceMessage
     } else if right.contains(.banSendInstantVideos) {
         return strings.Channel_BanUser_PermissionSendVideoMessage
+    } else if right.contains(.banSendReactions) {
+        return strings.Channel_BanUser_PermissionSendReactions
+    } else if right.contains(.banEditRank) {
+        if defaultPermissions {
+            return strings.Channel_BanUser_PermissionEditOwnRank
+        } else {
+            return strings.Channel_BanUser_PermissionEditRank
+        }
     } else {
         return ""
     }
@@ -562,6 +570,8 @@ func compactStringForGroupPermission(strings: PresentationStrings, right: Telegr
         return strings.GroupPermission_NoSendLinks
     } else if right.contains(.banSendPolls) {
         return strings.GroupPermission_NoSendPolls
+    } else if right.contains(.banSendReactions) {
+        return strings.GroupPermission_NoSendReactions
     } else if right.contains(.banChangeInfo) {
         return strings.GroupPermission_NoChangeInfo
     } else if right.contains(.banAddMembers) {
@@ -570,6 +580,8 @@ func compactStringForGroupPermission(strings: PresentationStrings, right: Telegr
         return strings.GroupPermission_NoPinMessages
     } else if right.contains(.banManageTopics) {
         return strings.GroupPermission_NoManageTopics
+    } else if right.contains(.banEditRank) {
+        return strings.GroupPermission_NoEditRank
     } else {
         return ""
     }
@@ -587,10 +599,12 @@ private let internal_allPossibleGroupPermissionList: [(TelegramChatBannedRightsF
     (.banSendInstantVideos, .banMembers),
     (.banEmbedLinks, .banMembers),
     (.banSendPolls, .banMembers),
+    (.banSendReactions, .banMembers),
     (.banAddMembers, .banMembers),
     (.banPinMessages, .pinMessages),
     (.banManageTopics, .manageTopics),
-    (.banChangeInfo, .changeInfo)
+    (.banChangeInfo, .changeInfo),
+    (.banEditRank, .editRank)
 ]
 
 public func allGroupPermissionList(peer: EnginePeer, expandMedia: Bool) -> [(TelegramChatBannedRightsFlags, TelegramChannelPermission)] {
@@ -601,6 +615,7 @@ public func allGroupPermissionList(peer: EnginePeer, expandMedia: Bool) -> [(Tel
             (.banSendMedia, .banMembers),
             (.banAddMembers, .banMembers),
             (.banPinMessages, .pinMessages),
+            (.banEditRank, .editRank),
             (.banManageTopics, .manageTopics),
             (.banChangeInfo, .changeInfo)
         ]
@@ -610,6 +625,7 @@ public func allGroupPermissionList(peer: EnginePeer, expandMedia: Bool) -> [(Tel
             (.banSendMedia, .banMembers),
             (.banAddMembers, .banMembers),
             (.banPinMessages, .pinMessages),
+            (.banEditRank, .editRank),
             (.banChangeInfo, .changeInfo)
         ]
     }
@@ -636,6 +652,7 @@ public func banSendMediaSubList() -> [(TelegramChatBannedRightsFlags, TelegramCh
         (.banSendInstantVideos, .banMembers),
         (.banEmbedLinks, .banMembers),
         (.banSendPolls, .banMembers),
+        (.banSendReactions, .banMembers)
     ]
 }
 
@@ -707,11 +724,11 @@ private func channelPermissionsControllerEntries(context: AccountContext, presen
                 for (subRight, _) in banSendMediaSubList() {
                     let subRightEnabled = true
                     
-                    subItems.append(SubPermission(title: stringForGroupPermission(strings: presentationData.strings, right: subRight, isForum: channel.isForum), flags: subRight, isSelected: !effectiveRightsFlags.contains(subRight), isEnabled: enabled && subRightEnabled))
+                    subItems.append(SubPermission(title: stringForGroupPermission(strings: presentationData.strings, right: subRight, isForum: channel.isForum, defaultPermissions: true), flags: subRight, isSelected: !effectiveRightsFlags.contains(subRight), isEnabled: enabled && subRightEnabled))
                 }
             }
             
-            entries.append(.permission(presentationData.theme, rightIndex, stringForGroupPermission(strings: presentationData.strings, right: rights, isForum: channel.isForum), isSelected, rights, enabled, subItems, state.expandedPermissions.contains(rights)))
+            entries.append(.permission(presentationData.theme, rightIndex, stringForGroupPermission(strings: presentationData.strings, right: rights, isForum: channel.isForum, defaultPermissions: true), isSelected, rights, enabled, subItems, state.expandedPermissions.contains(rights)))
             rightIndex += 1
         }
         
@@ -791,11 +808,11 @@ private func channelPermissionsControllerEntries(context: AccountContext, presen
                 for (subRight, _) in banSendMediaSubList() {
                     let subRightEnabled = true
                     
-                    subItems.append(SubPermission(title: stringForGroupPermission(strings: presentationData.strings, right: subRight, isForum: false), flags: subRight, isSelected: !effectiveRightsFlags.contains(subRight), isEnabled: subRightEnabled))
+                    subItems.append(SubPermission(title: stringForGroupPermission(strings: presentationData.strings, right: subRight, isForum: false, defaultPermissions: true), flags: subRight, isSelected: !effectiveRightsFlags.contains(subRight), isEnabled: subRightEnabled))
                 }
             }
             
-            entries.append(.permission(presentationData.theme, rightIndex, stringForGroupPermission(strings: presentationData.strings, right: rights, isForum: false), isSelected, rights, true, subItems, state.expandedPermissions.contains(rights)))
+            entries.append(.permission(presentationData.theme, rightIndex, stringForGroupPermission(strings: presentationData.strings, right: rights, isForum: false, defaultPermissions: true), isSelected, rights, true, subItems, state.expandedPermissions.contains(rights)))
             rightIndex += 1
         }
         
@@ -1040,7 +1057,14 @@ public func channelPermissionsController(context: AccountContext, updatedPresent
                             }
                     }
                 }
-                let _ = (context.account.postbox.loadedPeerWithId(peerId)
+                let _ = (context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: peerId))
+                |> mapToSignal { peer -> Signal<EnginePeer, NoError> in
+                    if let peer {
+                        return .single(peer)
+                    } else {
+                        return .never()
+                    }
+                }
                 |> deliverOnMainQueue).start(next: { channel in
                     dismissController?()
                         presentControllerImpl?(channelBannedMemberController(context: context, peerId: peerId, memberId: peer.id, initialParticipant: participant?.participant, updated: { _ in
@@ -1084,7 +1108,7 @@ public func channelPermissionsController(context: AccountContext, updatedPresent
             }), ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
         })
     }, openPeerInfo: { peer in
-        if let controller = context.sharedContext.makePeerInfoController(context: context, updatedPresentationData: nil, peer: peer._asPeer(), mode: .generic, avatarInitiallyExpanded: false, fromChat: false, requestsContext: nil) {
+        if let controller = context.sharedContext.makePeerInfoController(context: context, updatedPresentationData: nil, peer: peer, mode: .generic, avatarInitiallyExpanded: false, fromChat: false, requestsContext: nil) {
             pushControllerImpl?(controller)
         }
     }, openKicked: {

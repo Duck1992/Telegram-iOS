@@ -221,6 +221,7 @@ private struct CommandChatInputContextPanelEntry: Comparable, Identifiable {
                         presence: nil,
                         hasUnseenMentions: false,
                         hasUnseenReactions: false,
+                        hasUnseenPollVotes: false,
                         draftState: nil,
                         mediaDraftContentType: nil,
                         inputActivities: nil,
@@ -297,7 +298,7 @@ final class CommandChatInputContextPanelNode: ChatInputContextPanelNode {
         self.backgroundView = GlassBackgroundView()
         self.backgroundView.layer.anchorPoint = CGPoint()
         
-        self.listView = ListView()
+        self.listView = ListViewImpl()
         self.listView.anchorPoint = CGPoint()
         self.listView.isOpaque = false
         self.listView.stackFromBottom = true
@@ -316,7 +317,7 @@ final class CommandChatInputContextPanelNode: ChatInputContextPanelNode {
         self.addSubnode(self.listView)
         
         self.backgroundView.isHidden = true
-        self.listView.visibleContentOffsetChanged = { [weak self] offset in
+        self.listView.visibleContentOffsetChanged = { [weak self] offset, _ in
             guard let self else {
                 return
             }
@@ -504,7 +505,7 @@ final class CommandChatInputContextPanelNode: ChatInputContextPanelNode {
             size: self.backgroundView.bounds.size,
             cornerRadius: 20.0,
             isDark: interfaceState.theme.overallDarkAppearance,
-            tintColor: .init(kind: .panel, color: interfaceState.theme.chat.inputPanel.inputBackgroundColor.withMultipliedAlpha(0.7)),
+            tintColor: .init(kind: .panel),
             transition: ComponentTransition(transition)
         )
         

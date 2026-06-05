@@ -173,6 +173,10 @@ public final class ChatTextInputActionButtonsNode: ASDisplayNode, ChatSendMessag
     public var customSendColor: UIColor?
     public var isSendDisabled: Bool = false
     
+    private var slowmodeProgressTimestamp: (duration: Int32, timestamp: Int32)?
+    private var slowmodeProgressTimer: Foundation.Timer?
+    private var slowmodeProgressLayer: SimpleShapeLayer?
+    
     public init(context: AccountContext, presentationInterfaceState: ChatPresentationInterfaceState, presentationContext: ChatPresentationContext?, presentController: @escaping (ViewController) -> Void) {
         self.context = context
         self.presentationContext = presentationContext
@@ -255,6 +259,10 @@ public final class ChatTextInputActionButtonsNode: ASDisplayNode, ChatSendMessag
         }
     }
     
+    deinit {
+        self.slowmodeProgressTimer?.invalidate()
+    }
+    
     override public func didLoad() {
         super.didLoad()
         
@@ -295,6 +303,13 @@ public final class ChatTextInputActionButtonsNode: ASDisplayNode, ChatSendMessag
         
         var innerSize = size
         innerSize.width = 40.0 + 3.0 * 2.0
+        
+        let defaultGlassTintColor: GlassBackgroundView.TintColor
+        if case .clear = interfaceState.preferredGlassType {
+            defaultGlassTintColor = .init(kind: .clear)
+        } else {
+            defaultGlassTintColor = .init(kind: .panel)
+        }
         
         var starsAmount: Int64?
         if let sendPaidMessageStars = interfaceState.sendPaidMessageStars, interfaceState.interfaceState.editMessage == nil {
@@ -345,13 +360,77 @@ public final class ChatTextInputActionButtonsNode: ASDisplayNode, ChatSendMessag
         }
     
         transition.updateFrame(view: self.micButtonBackgroundView, frame: CGRect(origin: CGPoint(), size: size))
-        self.micButtonBackgroundView.update(size: size, cornerRadius: size.height * 0.5, isDark:  interfaceState.theme.overallDarkAppearance, tintColor: .init(kind: .panel, color: interfaceState.theme.chat.inputPanel.inputBackgroundColor.withMultipliedAlpha(0.7)), isInteractive: true, transition: ComponentTransition(transition))
+        self.micButtonBackgroundView.update(size: size, cornerRadius: size.height * 0.5, isDark:  interfaceState.theme.overallDarkAppearance, tintColor: defaultGlassTintColor, isInteractive: true, transition: ComponentTransition(transition))
         
         transition.updateFrame(layer: self.micButton.layer, frame: CGRect(origin: CGPoint(), size: size))
         self.micButton.layoutItems()
         
+        var sendSlowmodeTimerTimestamp: (duration: Int32, timestamp: Int32)?
+        if let slowmodeState = interfaceState.slowmodeState {
+            switch slowmodeState.variant {
+            case .pendingMessages:
+                break
+            case let .timestamp(timeoutTimestamp):
+                sendSlowmodeTimerTimestamp = (slowmodeState.timeout, timeoutTimestamp)
+            }
+        }
+        
         let sendButtonBackgroundFrame = CGRect(origin: CGPoint(), size: innerSize).insetBy(dx: 3.0, dy: 3.0)
-        transition.updateFrame(view: self.sendButtonBackgroundView, frame: sendButtonBackgroundFrame)
+        
+        let slowmodeInset: CGFloat = 4.0
+        
+        self.slowmodeProgressTimestamp = sendSlowmodeTimerTimestamp
+        if sendSlowmodeTimerTimestamp != nil {
+            let slowmodeProgressLayer: SimpleShapeLayer
+            var slowmodeProgressTransition = transition
+            if let current = self.slowmodeProgressLayer {
+                slowmodeProgressLayer = current
+            } else {
+                slowmodeProgressTransition = .immediate
+                slowmodeProgressLayer = SimpleShapeLayer()
+                self.slowmodeProgressLayer = slowmodeProgressLayer
+                self.sendButtonBackgroundView.layer.superlayer?.insertSublayer(slowmodeProgressLayer, below: self.sendButtonBackgroundView.layer)
+                
+                slowmodeProgressLayer.fillColor = nil
+                slowmodeProgressLayer.lineWidth = 2.0
+                slowmodeProgressLayer.lineCap = .round
+            }
+            
+            slowmodeProgressLayer.strokeColor = (self.customSendColor ?? interfaceState.theme.chat.inputPanel.panelControlAccentColor).cgColor
+            
+            if slowmodeProgressLayer.bounds.size != sendButtonBackgroundFrame.size {
+                let pathFrame = CGRect(origin: CGPoint(), size: sendButtonBackgroundFrame.size).insetBy(dx: 2.0, dy: 2.0)
+                slowmodeProgressLayer.path = UIBezierPath(roundedRect: pathFrame, cornerRadius: pathFrame.height * 0.5).cgPath
+            }
+            slowmodeProgressTransition.updateFrame(layer: slowmodeProgressLayer, frame: sendButtonBackgroundFrame)
+            
+            if self.slowmodeProgressTimer == nil {
+                self.slowmodeProgressTimer = Foundation.Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true, block: { [weak self] _ in
+                    guard let self else {
+                        return
+                    }
+                    self.updateSlowmodeProgress()
+                })
+            }
+            self.updateSlowmodeProgress()
+        } else {
+            if let slowmodeProgressLayer = self.slowmodeProgressLayer {
+                self.slowmodeProgressLayer = nil
+                slowmodeProgressLayer.removeFromSuperlayer()
+            }
+            if let slowmodeProgressTimer = self.slowmodeProgressTimer {
+                self.slowmodeProgressTimer = nil
+                slowmodeProgressTimer.invalidate()
+            }
+        }
+        
+        ComponentTransition(transition).setPosition(view: self.sendButtonBackgroundView, position: sendButtonBackgroundFrame.center)
+        ComponentTransition(transition).setBounds(view: self.sendButtonBackgroundView, bounds: CGRect(origin: CGPoint(), size: sendButtonBackgroundFrame.size))
+        var sendButtonBackgroundScale: CGFloat = 1.0
+        if sendSlowmodeTimerTimestamp != nil, let image = self.sendButtonBackgroundView.image {
+            sendButtonBackgroundScale = (image.size.height - slowmodeInset * 2.0) / image.size.height
+        }
+        transition.updateTransformScale(layer: self.sendButtonBackgroundView.layer, scale: sendButtonBackgroundScale)
         
         if self.isSendDisabled {
             transition.updateTintColor(view: self.sendButtonBackgroundView, color: interfaceState.theme.chat.inputPanel.panelControlAccentColor.withMultiplied(hue: 1.0, saturation: 0.0, brightness: 0.5).withMultipliedAlpha(0.25))
@@ -401,7 +480,7 @@ public final class ChatTextInputActionButtonsNode: ASDisplayNode, ChatSendMessag
         
         transition.updateFrame(view: self.expandMediaInputButton, frame: CGRect(origin: CGPoint(), size: size))
         transition.updateFrame(view: self.expandMediaInputButtonBackgroundView, frame: CGRect(origin: CGPoint(), size: size))
-        self.expandMediaInputButtonBackgroundView.update(size: size, cornerRadius: size.height * 0.5, isDark: interfaceState.theme.overallDarkAppearance, tintColor: .init(kind: .panel, color: interfaceState.theme.chat.inputPanel.inputBackgroundColor.withMultipliedAlpha(0.7)), isInteractive: true, transition: ComponentTransition(transition))
+        self.expandMediaInputButtonBackgroundView.update(size: size, cornerRadius: size.height * 0.5, isDark: interfaceState.theme.overallDarkAppearance, tintColor: defaultGlassTintColor, isInteractive: true, transition: ComponentTransition(transition))
         if let image = self.expandMediaInputButtonIcon.image {
             let expandIconFrame = CGRect(origin: CGPoint(x: floor((size.width - image.size.width) * 0.5), y: floor((size.height - image.size.height) * 0.5)), size: image.size)
             self.expandMediaInputButtonIcon.center = expandIconFrame.center
@@ -432,6 +511,18 @@ public final class ChatTextInputActionButtonsNode: ASDisplayNode, ChatSendMessag
         }
         
         return innerSize
+    }
+    
+    private func updateSlowmodeProgress() {
+        guard let slowmodeProgressLayer = self.slowmodeProgressLayer, let slowmodeProgressTimestamp = self.slowmodeProgressTimestamp else {
+            return
+        }
+        
+        let timestamp = Date().timeIntervalSince1970
+        let timeout = max(0.0, Double(slowmodeProgressTimestamp.timestamp) - timestamp)
+        let fraction = timeout / max(0.1, Double(slowmodeProgressTimestamp.duration))
+        
+        slowmodeProgressLayer.strokeEnd = CGFloat(fraction)
     }
     
     public func updateAccessibility() {

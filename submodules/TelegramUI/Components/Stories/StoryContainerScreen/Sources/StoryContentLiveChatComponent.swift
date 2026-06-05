@@ -367,7 +367,7 @@ final class StoryContentLiveChatComponent: Component {
                             rank: nil,
                             subscriptionUntilDate: nil
                         ),
-                        peer: author._asPeer()
+                        peer: author
                     )],
                     mode: .liveStream(
                         messageCount: 1,
@@ -517,7 +517,7 @@ final class StoryContentLiveChatComponent: Component {
                     })))
                 }
                 
-                let contextController = ContextController(
+                let contextController = makeContextController(
                     presentationData: presentationData,
                     source: .extracted(ItemExtractedContentSource(
                         sourceNode: sourceNode,

@@ -15,6 +15,7 @@ import PremiumUI
 import TelegramPresentationData
 import PresentationDataUtils
 import PasswordSetupUI
+import InstantPageCache
 
 extension PeerInfoScreenNode {
     func openSettings(section: PeerInfoSettingsSection) {
@@ -57,7 +58,6 @@ extension PeerInfoScreenNode {
                 peerId: self.context.account.peerId,
                 avatarInitiallyExpanded: false,
                 isOpenedFromChat: false,
-                nearbyPeerDistance: nil,
                 reactionSourceMessageId: nil,
                 callMessages: [],
                 isMyProfile: true,
@@ -197,7 +197,7 @@ extension PeerInfoScreenNode {
             guard let controller = self.controller, !controller.presentAccountFrozenInfoIfNeeded() else {
                 return
             }
-            if let user = self.data?.peer as? TelegramUser, let phoneNumber = user.phone {
+            if case let .user(user) = self.data?.peer, let phoneNumber = user.phone {
                 let introController = PrivacyIntroController(context: self.context, mode: .changePhoneNumber(phoneNumber), proceedAction: { [weak self] in
                     if let strongSelf = self, let navigationController = strongSelf.controller?.navigationController as? NavigationController {
                         navigationController.replaceTopController(ChangePhoneNumberController(context: strongSelf.context), animated: true)
@@ -250,7 +250,7 @@ extension PeerInfoScreenNode {
                 }
             })
         case .logout:
-            if let user = self.data?.peer as? TelegramUser, let phoneNumber = user.phone {
+            if case let .user(user) = self.data?.peer, let phoneNumber = user.phone {
                 if let controller = self.controller, let navigationController = controller.navigationController as? NavigationController {
                     self.controller?.push(logoutOptionsController(context: self.context, navigationController: navigationController, canAddAccounts: true, phoneNumber: phoneNumber))
                 }
@@ -298,7 +298,16 @@ extension PeerInfoScreenNode {
         }
     }
 
+    func setupFaqIfNeeded() {
+        if !self.didSetCachedFaq {
+            self.cachedFaq.set(.single(nil) |> then(cachedFaqInstantPage(context: self.context) |> map(Optional.init)))
+            self.didSetCachedFaq = true
+        }
+    }
+    
     func openFaq(anchor: String? = nil) {
+        self.setupFaqIfNeeded()
+        
         let presentationData = self.presentationData
         let progressSignal = Signal<Never, NoError> { [weak self] subscriber in
             let controller = OverlayStatusController(theme: presentationData.theme, type: .loading(cancelled: nil))
@@ -314,6 +323,7 @@ extension PeerInfoScreenNode {
         let progressDisposable = progressSignal.start()
         
         let _ = (self.cachedFaq.get()
+        |> filter { $0 != nil }
         |> take(1)
         |> deliverOnMainQueue).start(next: { [weak self] resolvedUrl in
             progressDisposable.dispose()

@@ -41,7 +41,7 @@ private class DetailsChatPlaceholderNode: ASDisplayNode, NavigationDetailsPlaceh
     
     init(context: AccountContext) {
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        self.presentationInterfaceState = ChatPresentationInterfaceState(chatWallpaper: self.presentationData.chatWallpaper, theme: self.presentationData.theme, strings: self.presentationData.strings, dateTimeFormat: self.presentationData.dateTimeFormat, nameDisplayOrder: self.presentationData.nameDisplayOrder, limitsConfiguration: context.currentLimitsConfiguration.with { $0 }, fontSize: self.presentationData.chatFontSize, bubbleCorners: self.presentationData.chatBubbleCorners, accountPeerId: context.account.peerId, mode: .standard(.default), chatLocation: .peer(id: context.account.peerId), subject: nil, peerNearbyData: nil, greetingData: nil, pendingUnpinnedAllMessages: false, activeGroupCallInfo: nil, hasActiveGroupCall: false, threadData: nil, isGeneralThreadClosed: nil, replyMessage: nil, accountPeerColor: nil, businessIntro: nil)
+        self.presentationInterfaceState = ChatPresentationInterfaceState(chatWallpaper: self.presentationData.chatWallpaper, theme: self.presentationData.theme, preferredGlassType: .default, strings: self.presentationData.strings, dateTimeFormat: self.presentationData.dateTimeFormat, nameDisplayOrder: self.presentationData.nameDisplayOrder, limitsConfiguration: context.currentLimitsConfiguration.with { $0 }, fontSize: self.presentationData.chatFontSize, bubbleCorners: self.presentationData.chatBubbleCorners, accountPeerId: context.account.peerId, mode: .standard(.default), chatLocation: .peer(id: context.account.peerId), subject: nil, greetingData: nil, pendingUnpinnedAllMessages: false, activeGroupCallInfo: nil, hasActiveGroupCall: false, threadData: nil, isGeneralThreadClosed: nil, replyMessage: nil, accountPeerColor: nil, businessIntro: nil)
         
         self.wallpaperBackgroundNode = createWallpaperBackgroundNode(context: context, forChatDisplay: true, useSharedAnimationPhase: true)
         self.emptyNode = ChatEmptyNode(context: context, interaction: nil)
@@ -54,7 +54,8 @@ private class DetailsChatPlaceholderNode: ASDisplayNode, NavigationDetailsPlaceh
     
     func updatePresentationData(_ presentationData: PresentationData) {
         self.presentationData = presentationData
-        self.presentationInterfaceState = ChatPresentationInterfaceState(chatWallpaper: self.presentationData.chatWallpaper, theme: self.presentationData.theme, strings: self.presentationData.strings, dateTimeFormat: self.presentationData.dateTimeFormat, nameDisplayOrder: self.presentationData.nameDisplayOrder, limitsConfiguration: self.presentationInterfaceState.limitsConfiguration, fontSize: self.presentationData.chatFontSize, bubbleCorners: self.presentationData.chatBubbleCorners, accountPeerId: self.presentationInterfaceState.accountPeerId, mode: .standard(.default), chatLocation: self.presentationInterfaceState.chatLocation, subject: nil, peerNearbyData: nil, greetingData: nil, pendingUnpinnedAllMessages: false, activeGroupCallInfo: nil, hasActiveGroupCall: false, threadData: nil, isGeneralThreadClosed: nil, replyMessage: nil, accountPeerColor: nil, businessIntro: nil)
+        let preferredGlassType = self.presentationInterfaceState.preferredGlassType
+        self.presentationInterfaceState = ChatPresentationInterfaceState(chatWallpaper: self.presentationData.chatWallpaper, theme: self.presentationData.theme, preferredGlassType: preferredGlassType, strings: self.presentationData.strings, dateTimeFormat: self.presentationData.dateTimeFormat, nameDisplayOrder: self.presentationData.nameDisplayOrder, limitsConfiguration: self.presentationInterfaceState.limitsConfiguration, fontSize: self.presentationData.chatFontSize, bubbleCorners: self.presentationData.chatBubbleCorners, accountPeerId: self.presentationInterfaceState.accountPeerId, mode: .standard(.default), chatLocation: self.presentationInterfaceState.chatLocation, subject: nil, greetingData: nil, pendingUnpinnedAllMessages: false, activeGroupCallInfo: nil, hasActiveGroupCall: false, threadData: nil, isGeneralThreadClosed: nil, replyMessage: nil, accountPeerColor: nil, businessIntro: nil)
         
         self.wallpaperBackgroundNode.update(wallpaper: presentationData.chatWallpaper, animated: false)
     }
@@ -156,8 +157,20 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         return self.chatListController
     }
     
+    public func getSettingsController() -> ViewController? {
+        return self.accountSettingsController
+    }
+    
     public func getPrivacySettings() -> Promise<AccountPrivacySettings?>? {
         return self.accountSettingsController?.privacySettings
+    }
+    
+    public func getTwoStepAuthData() -> Promise<TwoStepAuthData?>? {
+        return self.accountSettingsController?.twoStepAuthData
+    }
+    
+    public func getNotificationExceptions() -> Promise<NotificationExceptionsList?>? {
+        return self.accountSettingsController?.notificationExceptions
     }
     
     override public func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
@@ -217,7 +230,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
             sharedContext.switchingData = (nil, nil, nil)
         }
         
-        let accountSettingsController = PeerInfoScreenImpl(context: self.context, updatedPresentationData: nil, peerId: self.context.account.peerId, avatarInitiallyExpanded: false, isOpenedFromChat: false, nearbyPeerDistance: nil, reactionSourceMessageId: nil, callMessages: [], isSettings: true)
+        let accountSettingsController = PeerInfoScreenImpl(context: self.context, updatedPresentationData: nil, peerId: self.context.account.peerId, avatarInitiallyExpanded: false, isOpenedFromChat: false, reactionSourceMessageId: nil, callMessages: [], isSettings: true)
         accountSettingsController.tabBarItemDebugTapAction = { [weak self] in
             guard let strongSelf = self else {
                 return
@@ -300,7 +313,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
     }
     
     @discardableResult
-    public func openStoryCamera(customTarget: Stories.PendingTarget?, resumeLiveStream: Bool, transitionIn: StoryCameraTransitionIn?, transitionedIn: @escaping () -> Void, transitionOut: @escaping (Stories.PendingTarget?, Bool) -> StoryCameraTransitionOut?) -> StoryCameraTransitionInCoordinator? {
+    public func openStoryCamera(mode: StoryCameraMode, customTarget: Stories.PendingTarget?, resumeLiveStream: Bool, transitionIn: StoryCameraTransitionIn?, transitionedIn: @escaping () -> Void, transitionOut: @escaping (Stories.PendingTarget?, Bool) -> StoryCameraTransitionOut?) -> StoryCameraTransitionInCoordinator? {
         guard let controller = self.viewControllers.last as? ViewController else {
             return nil
         }
@@ -326,6 +339,16 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
             }
         }
         
+        let cameraMode: CameraScreenImpl.CameraMode
+        switch mode {
+        case .photo:
+            cameraMode = .photo
+        case .video:
+            cameraMode = .video
+        case .live:
+            cameraMode = .live
+        }
+        
         var presentImpl: ((ViewController) -> Void)?
         var returnToCameraImpl: (() -> Void)?
         var dismissCameraImpl: (() -> Void)?
@@ -333,6 +356,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         let cameraController = CameraScreenImpl(
             context: context,
             mode: .story,
+            cameraMode: cameraMode,
             customTarget: mediaEditorCustomTarget,
             resumeLiveStream: resumeLiveStream,
             transitionIn: transitionIn.flatMap {
@@ -746,6 +770,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
                         randomId: result.randomId,
                         forwardInfo: forwardInfo,
                         folders: folders,
+                        music: result.music,
                         uploadInfo: results.count > 1 ? StoryUploadInfo(groupingId: groupingId, index: index, total: Int32(results.count)) : nil
                     )
                     |> deliverOnMainQueue).startStandalone(next: { stableId in
@@ -758,7 +783,31 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         }
     }
     
-    public func openSettings() {
+    public func openChats() {
+        guard let rootTabController = self.rootTabController else {
+            return
+        }
+        
+        self.popToRoot(animated: false)
+    
+        if let index = rootTabController.controllers.firstIndex(where: { $0 is ChatListController }) {
+            rootTabController.selectedIndex = index
+        }
+    }
+    
+    public func openContacts() {
+        guard let rootTabController = self.rootTabController else {
+            return
+        }
+        
+        self.popToRoot(animated: false)
+    
+        if let index = rootTabController.controllers.firstIndex(where: { $0 is ContactsController }) {
+            rootTabController.selectedIndex = index
+        }
+    }
+        
+    public func openSettings(edit: Bool) {
         guard let rootTabController = self.rootTabController else {
             return
         }
@@ -767,6 +816,10 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
     
         if let index = rootTabController.controllers.firstIndex(where: { $0 is PeerInfoScreenImpl }) {
             rootTabController.selectedIndex = index
+        }
+        
+        if edit {
+            self.accountSettingsController?.activateEdit()
         }
     }
     
@@ -783,6 +836,10 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
             self.rootTabController?.updateControllerLayout(controller: accountSettingsController)
             accountSettingsController.openAvatars()
         }
+    }
+    
+    public func startNewCall() {
+        self.callListController?.tabBarActivateSearch()
     }
 }
 

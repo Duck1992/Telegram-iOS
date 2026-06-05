@@ -331,7 +331,7 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                                                         }
                                                         return filters
                                                     }).startStandalone()
-                                                    chatListController?.present(UndoOverlayController( presentationData: presentationData, content: .chatAddedToFolder(context: context, chatTitle: peer.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder), folderTitle: title.rawAttributedString), elevatedLayout: false, animateInAsReplacement: true, action: { _ in
+                                                    chatListController?.present(UndoOverlayController(presentationData: presentationData, content: .chatAddedToFolder(context: context, chatTitle: peer.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder), folderTitle: title.rawAttributedString), elevatedLayout: false, animateInAsReplacement: true, action: { _ in
                                                         return false
                                                     }), in: .current)
                                                 })
@@ -352,7 +352,7 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                             })))
                         } else if !isForum {
                             var canMarkAsUnread = true
-                            if peerId.namespace == Namespaces.Peer.CloudChannel && !joined {
+                            if peerId.namespace == Namespaces.Peer.CloudChannel && joined {
                                 canMarkAsUnread = false
                             }
                             if canMarkAsUnread {
@@ -505,7 +505,7 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                                         }
                                         
                                         joinChannelDisposable.set((createSignal
-                                                                   |> deliverOnMainQueue).start(next: { _ in
+                                        |> deliverOnMainQueue).start(next: { _ in
                                         }, error: { _ in
                                             if let chatListController = chatListController {
                                                 let presentationData = context.sharedContext.currentPresentationData.with { $0 }
@@ -953,6 +953,7 @@ public func chatForumTopicMenuItems(context: AccountContext, peerId: PeerId, thr
                                     })
                                 ])
                             ])
+                            chatListController.view.endEditing(true)
                             chatListController.present(actionSheet, in: .window(.root))
                         }
                     })
@@ -1022,7 +1023,7 @@ public func savedMessagesPeerMenuItems(context: AccountContext, threadId: Int64,
 }
 
 private func openCustomMute(context: AccountContext, peerId: EnginePeer.Id, threadId: Int64, baseController: ViewController) {
-    let controller = ChatTimerScreen(context: context, updatedPresentationData: nil, style: .default, mode: .mute, currentTime: nil, dismissByTapOutside: true, completion: { [weak baseController] value in
+    let controller = ChatTimerScreen(context: context, updatedPresentationData: nil, style: .default, mode: .mute, currentTime: nil, completion: { [weak baseController] value in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         
         if value <= 0 {

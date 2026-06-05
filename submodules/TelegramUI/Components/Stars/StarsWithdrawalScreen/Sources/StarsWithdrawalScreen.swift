@@ -88,10 +88,10 @@ private final class SheetContent: CombinedComponent {
                         
             let closeButton = closeButton.update(
                 component: GlassBarButtonComponent(
-                    size: CGSize(width: 40.0, height: 40.0),
-                    backgroundColor: theme.rootController.navigationBar.glassBarButtonBackgroundColor,
+                    size: CGSize(width: 44.0, height: 44.0),
+                    backgroundColor: nil,
                     isDark: theme.overallDarkAppearance,
-                    state: .generic,
+                    state: .glass,
                     component: AnyComponentWithIdentity(id: "close", component: AnyComponent(
                         BundleIconComponent(
                             name: "Navigation/Close",
@@ -102,7 +102,7 @@ private final class SheetContent: CombinedComponent {
                         component.dismiss()
                     }
                 ),
-                availableSize: CGSize(width: 40.0, height: 40.0),
+                availableSize: CGSize(width: 44.0, height: 44.0),
                 transition: .immediate
             )
             context.add(closeButton
@@ -244,7 +244,7 @@ private final class SheetContent: CombinedComponent {
                 transition: .immediate
             )
             context.add(title
-                .position(CGPoint(x: context.availableSize.width / 2.0, y: 36.0))
+                .position(CGPoint(x: context.availableSize.width / 2.0, y: 38.0))
             )
             contentSize.height += title.size.height
             contentSize.height += 56.0
@@ -954,6 +954,7 @@ private final class SheetContent: CombinedComponent {
                             if let minAmount, amount < minAmount, (!allowZero || amount != .zero) {
                                 controller.presentMinAmountTooltip(minAmount.value, currency: state.currency)
                             } else {
+                                var dismiss = true
                                 switch state.mode {
                                 case let .withdraw(_, completion):
                                     completion(amount.value)
@@ -964,6 +965,7 @@ private final class SheetContent: CombinedComponent {
                                 case let .reaction(_, completion):
                                     completion(amount.value)
                                 case let .starGiftResell(_, _, completion):
+                                    dismiss = false
                                     completion(CurrencyAmount(amount: amount, currency: state.currency))
                                 case let .paidMessages(_, _, _, _, completion):
                                     completion(amount.value)
@@ -1022,7 +1024,9 @@ private final class SheetContent: CombinedComponent {
                                     completion(CurrencyAmount(amount: amount, currency: state.currency), state.duration)
                                 }
                                 
-                                controller.dismissAnimated()
+                                if dismiss {
+                                    controller.dismissAnimated()
+                                }
                             }
                         }
                     }
@@ -1300,6 +1304,8 @@ private final class StarsWithdrawSheetComponent: CombinedComponent {
                 environment: {
                     environment
                     SheetComponentEnvironment(
+                        metrics: environment.metrics,
+                        deviceMetrics: environment.deviceMetrics,
                         isDisplaying: environment.value.isVisible,
                         isCentered: environment.metrics.widthClass == .regular,
                         hasInputHeight: !environment.inputHeight.isZero,
@@ -1465,6 +1471,17 @@ public final class StarsWithdrawScreen: ViewControllerComponentContainer {
         
         if let view = self.node.hostView.findTaggedView(tag: amountTag) as? AmountFieldComponent.View {
             view.animateError()
+        }
+    }
+    
+    public override func dismiss(animated flag: Bool, completion: (() -> Void)? = nil) {
+        if flag {
+            self.dismissAnimated()
+            Queue.mainQueue().after(0.3, {
+                completion?()
+            })
+        } else {
+            super.dismiss(animated: false, completion: completion)
         }
     }
         
@@ -2450,7 +2467,7 @@ private final class MenuComponent: Component {
                 componentTransition.setFrame(view: view, frame: CGRect(origin: .zero, size: componentSize))
             }
             
-            self.backgroundView.update(size: backgroundFrame.size, cornerRadius: 30.0, isDark: component.theme.overallDarkAppearance, tintColor: .init(kind: .panel, color: component.theme.chat.inputPanel.inputBackgroundColor.withMultipliedAlpha(0.7)), transition: transition)
+            self.backgroundView.update(size: backgroundFrame.size, cornerRadius: 30.0, isDark: component.theme.overallDarkAppearance, tintColor: .init(kind: .panel), transition: transition)
             self.backgroundView.frame = backgroundFrame
             
             self.containerView.frame = CGRect(origin: .zero, size: availableSize)

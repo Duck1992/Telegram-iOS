@@ -142,7 +142,7 @@ final class PeerSelectionScreenComponent: Component {
         }
     }
     
-    private final class ContentListNode: ListView {
+    private final class ContentListNode: ListViewImpl {
         weak var parentView: View?
         let context: AccountContext
         var presentationData: PresentationData
@@ -522,12 +522,16 @@ final class PeerSelectionScreenComponent: Component {
                         let timingFunction: String
                         switch curve {
                         case .easeInOut:
-                            timingFunction = CAMediaTimingFunctionName.easeOut.rawValue
+                            timingFunction = CAMediaTimingFunctionName.easeInEaseOut.rawValue
+                        case .easeIn:
+                            timingFunction = CAMediaTimingFunctionName.easeIn.rawValue
                         case .linear:
                             timingFunction = CAMediaTimingFunctionName.linear.rawValue
                         case .spring:
                             timingFunction = kCAMediaTimingFunctionSpring
                         case .custom:
+                            timingFunction = kCAMediaTimingFunctionSpring
+                        case .bounce:
                             timingFunction = kCAMediaTimingFunctionSpring
                         }
                         
@@ -549,7 +553,7 @@ final class PeerSelectionScreenComponent: Component {
                 contentListNode = ContentListNode(parentView: self, context: component.context)
                 self.contentListNode = contentListNode
                 
-                contentListNode.visibleContentOffsetChanged = { [weak self] offset in
+                contentListNode.visibleContentOffsetChanged = { [weak self] offset, _ in
                     guard let self else {
                         return
                     }

@@ -70,6 +70,11 @@ swift_library(
         "//submodules/TelegramUI/Components/PlainButtonComponent",
         "//submodules/AvatarNode",
         "//submodules/PhotoResources",
+        "//submodules/TelegramUI/Components/EdgeEffect",
+        "//submodules/TelegramUI/Components/GlassBackgroundComponent",
+        "//submodules/TelegramUI/Components/GlassControls",
+        "//submodules/TelegramUI/Components/VideoPlaybackControlsComponent",
+        "//submodules/UIKitRuntimeUtils",
     ],
     visibility = [
         "//visibility:public",

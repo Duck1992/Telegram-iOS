@@ -2,7 +2,6 @@ import Foundation
 import UIKit
 import Display
 import AsyncDisplayKit
-import Postbox
 import TelegramCore
 import SwiftSignalKit
 import TelegramPresentationData
@@ -15,6 +14,7 @@ import PeerPresenceStatusManager
 import AppBundle
 import PhoneNumberFormat
 import AccountContext
+import ListItemComponentAdaptor
 
 private let updatingAvatarOverlayImage = generateFilledCircleImage(diameter: 66.0, color: UIColor(white: 0.0, alpha: 0.4), backgroundColor: nil)
 
@@ -114,7 +114,7 @@ public final class ItemListAvatarAndNameInfoItemContext {
     }
 }
 
-public enum ItemListAvatarAndNameInfoItemStyle {
+public enum ItemListAvatarAndNameInfoItemStyle: Equatable {
     case plain
     case blocks(withTopInset: Bool, withExtendedBottomInset: Bool)
 }
@@ -131,10 +131,10 @@ public enum ItemListAvatarAndNameInfoItemMode {
     case editSettings
 }
 
-public class ItemListAvatarAndNameInfoItem: ListViewItem, ItemListItem {
+public class ItemListAvatarAndNameInfoItem: ListViewItem, ItemListItem, ListItemComponentAdaptor.ItemGenerator {
     public enum ItemContext {
         case accountContext(AccountContext)
-        case other(accountPeerId: EnginePeer.Id, postbox: Postbox, network: Network)
+        case other(accountPeerId: EnginePeer.Id, stateManager: AccountStateManager)
         
         var accountContext: AccountContext? {
             if case let .accountContext(accountContext) = self {
@@ -193,7 +193,7 @@ public class ItemListAvatarAndNameInfoItem: ListViewItem, ItemListItem {
         if case .settings = mode {
             self.selectable = true
         } else {
-            self.selectable = false
+            self.selectable = action != nil
         }
     }
     
@@ -235,6 +235,53 @@ public class ItemListAvatarAndNameInfoItem: ListViewItem, ItemListItem {
     public func selected(listView: ListView){
         listView.clearHighlightAnimated(true)
         self.action?()
+    }
+    
+    public func item() -> ListViewItem {
+        return self
+    }
+    
+    public static func ==(lhs: ItemListAvatarAndNameInfoItem, rhs: ItemListAvatarAndNameInfoItem) -> Bool {
+        if lhs.presentationData !== rhs.presentationData {
+            return false
+        }
+        if lhs.systemStyle != rhs.systemStyle {
+            return false
+        }
+        if lhs.dateTimeFormat != rhs.dateTimeFormat {
+            return false
+        }
+        if lhs.mode != rhs.mode {
+            return false
+        }
+        if lhs.peer != rhs.peer {
+            return false
+        }
+        if lhs.presence != rhs.presence {
+            return false
+        }
+        if lhs.label != rhs.label {
+            return false
+        }
+        if lhs.memberCount != rhs.memberCount {
+            return false
+        }
+        if lhs.state != rhs.state {
+            return false
+        }
+        if lhs.sectionId != rhs.sectionId {
+            return false
+        }
+        if lhs.style != rhs.style {
+            return false
+        }
+        if lhs.context !== rhs.context {
+            return false
+        }
+        if lhs.updatingImage != rhs.updatingImage {
+            return false
+        }
+        return true
     }
 }
 
@@ -710,8 +757,8 @@ public class ItemListAvatarAndNameInfoItemNode: ListViewItemNode, ItemListItemNo
                         switch item.itemContext {
                         case let .accountContext(context):
                             strongSelf.avatarNode.setPeer(context: context, theme: item.presentationData.theme, peer: peer, overrideImage: overrideImage, emptyColor: ignoreEmpty ? nil : item.presentationData.theme.list.mediaPlaceholderColor, synchronousLoad: synchronousLoads)
-                        case let .other(accountPeerId, postbox, network):
-                            strongSelf.avatarNode.setPeer(accountPeerId: accountPeerId, postbox: postbox, network: network, contentSettings: .default, theme: item.presentationData.theme, peer: peer, authorOfMessage: nil, overrideImage: overrideImage, emptyColor: ignoreEmpty ? nil : item.presentationData.theme.list.mediaPlaceholderColor, synchronousLoad: synchronousLoads)
+                        case let .other(accountPeerId, stateManager):
+                            strongSelf.avatarNode.setPeer(accountPeerId: accountPeerId, postbox: stateManager.postbox, network: stateManager.network, contentSettings: .default, theme: item.presentationData.theme, peer: peer, authorOfMessage: nil, overrideImage: overrideImage, emptyColor: ignoreEmpty ? nil : item.presentationData.theme.list.mediaPlaceholderColor, synchronousLoad: synchronousLoads)
                         }
                         
                     }

@@ -277,8 +277,8 @@ private final class StarsTransactionSheetContent: CombinedComponent {
                 descriptionText = ""
                 count = CurrencyAmount(amount: subscription.pricing.amount, currency: .stars)
                 date = subscription.untilDate
-                if let creationDate = (subscription.peer._asPeer() as? TelegramChannel)?.creationDate, creationDate > 0 {
-                    additionalDate = creationDate
+                if case let .channel(channel) = subscription.peer, channel.creationDate > 0 {
+                    additionalDate = channel.creationDate
                 } else {
                     additionalDate = nil
                 }
@@ -672,10 +672,10 @@ private final class StarsTransactionSheetContent: CombinedComponent {
             
             let closeButton = closeButton.update(
                 component: GlassBarButtonComponent(
-                    size: CGSize(width: 40.0, height: 40.0),
-                    backgroundColor: theme.rootController.navigationBar.glassBarButtonBackgroundColor,
+                    size: CGSize(width: 44.0, height: 44.0),
+                    backgroundColor: nil,
                     isDark: theme.overallDarkAppearance,
-                    state: .generic,
+                    state: .glass,
                     component: AnyComponentWithIdentity(id: "close", component: AnyComponent(
                         BundleIconComponent(
                             name: "Navigation/Close",
@@ -686,7 +686,7 @@ private final class StarsTransactionSheetContent: CombinedComponent {
                         component.cancel(true)
                     }
                 ),
-                availableSize: CGSize(width: 30.0, height: 30.0),
+                availableSize: CGSize(width: 44.0, height: 44.0),
                 transition: .immediate
             )
             
@@ -1814,6 +1814,8 @@ private final class StarsTransactionSheetComponent: CombinedComponent {
                 environment: {
                     environment
                     SheetComponentEnvironment(
+                        metrics: environment.metrics,
+                        deviceMetrics: environment.deviceMetrics,
                         isDisplaying: environment.value.isVisible,
                         isCentered: environment.metrics.widthClass == .regular,
                         hasInputHeight: !environment.inputHeight.isZero,
@@ -1953,7 +1955,7 @@ public class StarsTransactionScreen: ViewControllerComponentContainer {
                     return
                 }
                 if isProfile {
-                    if let controller = context.sharedContext.makePeerInfoController(context: context, updatedPresentationData: nil, peer: peer._asPeer(), mode: .generic, avatarInitiallyExpanded: false, fromChat: false, requestsContext: nil) {
+                    if let controller = context.sharedContext.makePeerInfoController(context: context, updatedPresentationData: nil, peer: peer, mode: .generic, avatarInitiallyExpanded: false, fromChat: false, requestsContext: nil) {
                         navigationController.pushViewController(controller)
                     }
                 } else {
@@ -2010,7 +2012,7 @@ public class StarsTransactionScreen: ViewControllerComponentContainer {
                 associatedThreadInfo: nil,
                 associatedStories: [:]
             )
-            let gallery = GalleryController(context: self.context, source: .standaloneMessage(message, 0), replaceRootController: { _, _ in
+            let gallery = GalleryController(context: self.context, source: .standaloneMessage(message, .paidMediaIndex(0)), replaceRootController: { _, _ in
             }, baseNavigationController: nil)
             self.present(gallery, in: .window(.root), with: GalleryControllerPresentationArguments(transitionArguments: { messageId, media in
                 if let transitionNode = transitionNode(media) {

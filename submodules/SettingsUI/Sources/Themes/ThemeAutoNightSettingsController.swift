@@ -2,13 +2,13 @@ import Foundation
 import UIKit
 import Display
 import SwiftSignalKit
-import Postbox
 import TelegramCore
 import TelegramPresentationData
 import TelegramUIPreferences
 import ItemListUI
 import PresentationDataUtils
 import TelegramStringFormatting
+import TextFormat
 import AccountContext
 import DeviceLocationManager
 import Geocoding
